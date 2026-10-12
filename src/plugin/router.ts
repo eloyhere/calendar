@@ -65,9 +65,44 @@
  * 而不是 `loadFile`。** 只改这里不够，详见 `main/window.ts` 的 `loadRenderer`。
  */
 
-import { createRouter, createWebHistory } from "./dependencies";
-import type { RouteRecordRaw, Router } from "./dependencies";
+import { createRouter, createWebHashHistory } from "./dependencies";
+import type { RouteRecordRaw, Router, RouterHistory } from "./dependencies";
 import type { AppRoute } from "./route-meta";
+
+/**
+ * 把路由的 `path` 规范化成可直接用于菜单 index 的绝对路径。
+ *
+ * 三种输入都要处理，缺一个菜单就指错地方：绝对路径原样返回、相对路径按父链
+ * 拼接、空串（概览那种 `path: ""` 的子页）返回父路径本身。
+ */
+export function resolveRoutePath(path: string, parentPath = ""): string {
+    const base = parentPath.endsWith("/") && parentPath !== "/" ? parentPath.slice(0, -1) : parentPath;
+
+    if (path === "") {
+        return base === "" ? "/" : base;
+    }
+    if (path.startsWith("/")) {
+        return path;
+    }
+    return base === "/" ? `/${path}` : `${base}/${path}`;
+}
+
+/**
+ * 创建应用路由实例。
+ *
+ * - `history` 用 **hash 模式**：应用由 Electron 以 `file://` 装载 `index.html`，
+ *   history 模式在刷新与深链时会去请求真实文件路径而 404；
+ * - `list` 默认就是真实路由表，留出来是给测试注入"把 `component` 换成空壳"的
+ *   副本——Node 加载不了 `.vue`，而路由解析与组件内容无关。
+ */
+export function createAppRouter(history?: RouterHistory, list: readonly AppRoute[] = routes): Router {
+    return createRouter({
+        history: history ?? createWebHashHistory(),
+        routes: list as RouteRecordRaw[],
+        // 内容区是 `ElMain` 自己在滚，换页后停在上一页的滚动位置会让人以为没跳转
+        scrollBehavior: () => ({ top: 0 })
+    });
+}
 
 /** 路由名。全应用只有这一处写路由名字符串。 */
 export const RouteName = {
@@ -735,20 +770,3 @@ export const routes: AppRoute[] = [
         ]
     }
 ];
-
-/**
- * 应用路由实例。
- *
- * 模块级单例：路由表是模块常量，装配只发生一次，`plugins/router.ts` 直接
- * `app.use(router)`。需要另造一套路由（例如测试里换掉 `component`）时，
- * 用 `createRouter({ history: createMemoryHistory(), routes })` 自己建一个，
- * 不要去改这个实例。
- *
- * `scrollBehavior` 每次导航回到顶部：内容区是 `ElMain` 自己在滚，
- * 换页后停在上一页的滚动位置会让人以为没跳转。
- */
-export const router: Router = createRouter({
-    history: createWebHistory(),
-    routes: routes as RouteRecordRaw[],
-    scrollBehavior: () => ({ top: 0 })
-});

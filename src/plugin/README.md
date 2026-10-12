@@ -10,7 +10,7 @@
 src/plugin/
 ├─ index.ts            插件注册中心：installPlugins(app)
 ├─ dependencies.ts     三个依赖的统一转发 + 开发期自检
-├─ router.ts           路由表：/:module 覆盖 views/entities.ts 的全部实体
+├─ router.ts           路由表（纯配置）与路由实例 router
 ├─ plugins/
 │  ├─ types.ts         CalendarPlugin 契约
 │  ├─ element-plus.ts  Element Plus（中文语言包）
@@ -25,7 +25,7 @@ src/plugin/
 | ------------------------- | ------- | --------------------------------------- |
 | `element-plus`            | ^2.14.7 | 组件库，样式在 `dependencies.ts` 里引入 |
 | `@element-plus/icons-vue` | ^2.3.2  | 293 个图标，全量注册为全局组件          |
-| `vue-router`              | ^5.4.0  | hash 模式路由，`/:module` 对应一个实体  |
+| `vue-router`              | ^5.4.0  | history 模式路由，嵌套路由树  |
 
 > 版本号在 `dependencies.ts` 的 `PLUGIN_VERSIONS` 里与 `package.json` 逐字对照。
 > 升级依赖时两处一起改，`pnpm`/`npm` 的锁文件负责真正的范围校验。
@@ -59,8 +59,9 @@ import type { Router } from "../../plugin/dependencies"; // ✅ 类型从汇入�
 | `PLUGINS`                       | 插件清单，按装配顺序排列               |
 | `useRoute` / `useRouter`        | 路由工具                               |
 | `RouterLink` / `RouterView`     | 路由组件（已全局注册，模板里可直接用） |
-| `DEFAULT_MODULE`                | 默认实体模块名                         |
-| `ROUTE_NAMES` / `isKnownModule` | 路由名常量与模块名校验                 |
+| `routes` / `RouteName`          | 路由表与路由名常量                     |
+| `router`                        | 路由实例，由 `plugins/router.ts` 装配  |
+| `createMenuTree()`              | 由路由表推导出的侧栏菜单树             |
 
 模板里图标已是全局组件，直接用：
 
@@ -79,17 +80,26 @@ import type { Router } from "../../plugin/dependencies"; // ✅ 类型从汇入�
 
 ## 路由
 
-| 路径               | 名称       | 说明                                           |
-| ------------------ | ---------- | ---------------------------------------------- |
-| `/`                | `root`     | 重定向到默认实体                               |
-| `/:module`         | `entity`   | 实体页，`module` 必须在 `views/entities.ts` 中 |
-| `/:pathMatch(.*)*` | `fallback` | 未匹配路径回到默认实体，避免白屏               |
+路由表在 `router.ts`，是**纯配置**：整棵树逐条写死，没有生成器、没有拼路径的
+辅助函数；每条 `path` 都写成绝对路径，菜单与面包屑直接取 `route.path`。
+新增页面 = 在 `routes` 里加一条带 `meta.title` 的路由。
 
-用 **hash 模式**（URL 形如 `index.html#/temporal`）而不是 history 模式：
-Electron 以 `file://` 装载页面，history 模式在刷新与深链时会请求真实文件路径而 404。
+```
+/                         AppShell
+├─ （空路径）             概览
+├─ /agent /calendar /numerology /year /performance
+└─ /:pathMatch(.*)*       兜底回 /
+```
 
-非法 `module` 由 `router.beforeEach` 拦下并重定向到默认实体，不会把
-`EntityView` 挂起来再让它抛错。
+用 **history 模式**（`createWebHistory()`）。开发期走 dev server、`npm start`
+走 `electron-vite preview`，都是 http，history 模式完全正常。
+
+> ⚠️ **打包前必读**：打包后主进程用 `loadFile(...)` 装载页面，页面跑在 `file://`
+> 下，而 `file://` 的来源是 opaque 的——`history.pushState` 会抛 `SecurityError`，
+> 刷新与深链也会去请求真实文件路径而 404。要让打包产物也能用 history 模式，
+> 必须把 `main/window.ts` 的 `loadRenderer` 从 `loadFile` 换成自定义协议
+> （`registerSchemesAsPrivileged` + `protocol.handle("app://")`，并对非文件路径
+> 回退到 `index.html`）。只改路由表不够。
 
 ## 需要注意
 
