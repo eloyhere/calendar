@@ -1,0 +1,19 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+
+# 生成的数据：由 calendar.xlsx 重新生成，体积远超 GitHub 单文件限制
+#   python database/build.py     -> src/sqlite/<entity>.sqlite
+#   python database/sqlfiles.py  -> database/sql/<entity>/{table,data}.sql
+src/sqlite/
+database/sql/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 构建缓存
+*.tsbuildinfo

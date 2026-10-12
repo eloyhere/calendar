@@ -1,0 +1,18 @@
+# Prettier 规则（对应 README「代码风格规则」1-8、13 条）
+# 1. 优先使用双引号
+singleQuote: false
+jsxSingleQuote: false
+# 2. 缩进采用 4 空格
+tabWidth: 4
+useTabs: false
+# 3. 运算符左右有空格（Prettier 内建行为），另把属性冒号后的空格固定成 true
+bracketSpacing: true
+# 4. { 不换行：对象/数组括号同一行，且与 Vue 模板「"> 不换行」保持一致
+bracketSameLine: true
+# 行宽与结尾
+printWidth: 100
+trailingComma: none
+# 13. 句尾必须有分号
+semi: true
+arrowParens: always
+endOfLine: lf

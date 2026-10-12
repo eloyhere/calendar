@@ -1,0 +1,71 @@
+/**
+ * 全局样式。
+ *
+ * Element Plus 自带的样式在 `src/plugin/dependencies.ts` 里引入（`element-plus/dist/index.css`），
+ * 本文件只补三件它不管的事：
+ *
+ * 1. **满高**：应用外壳用 `height: 100vh` 撑满窗口，需要 `html / body / #app` 一路
+ *    把高度传下来，否则 `100vh` 之外还会多出滚动条；
+ * 2. **不整页滚动**：窗口本身不滚，滚动条归内容区（`ElMain` 的 `overflow: auto`）。
+ *    这样侧栏与页头在长表格页面里保持固定；
+ * 3. **等宽数字**：历表里全是 4~5 位年份与时分秒，比例字体下数字宽度不一，
+ *    列会对不齐。统一给数字开 `tabular-nums`。
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    font-family:
+        "Inter",
+        "PingFang SC",
+        "Microsoft YaHei",
+        "Helvetica Neue",
+        Arial,
+        system-ui,
+        sans-serif;
+}
+
+/* 历表数字对齐：年份、时刻、行数一律等宽 */
+.numeral {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+/* 长标题在窄侧栏里截断而不是换行 */
+.is-truncated {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 侧栏折叠时隐藏文字标签（Element Plus 只处理菜单项，额外的说明文字靠这条） */
+.app-aside--collapsed .app-aside__label {
+    display: none;
+}
+
+/* 内容区的滚动条细一点，避免在窄窗口里太抢眼 */
+.el-main::-webkit-scrollbar,
+.el-scrollbar__wrap::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.el-main::-webkit-scrollbar-thumb,
+.el-scrollbar__wrap::-webkit-scrollbar-thumb {
+    background: var(--el-border-color-darker);
+    border-radius: 4px;
+}
