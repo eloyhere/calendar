@@ -40,6 +40,7 @@ declare module "vue" {
         ElMenu: typeof import("element-plus")["ElMenu"];
         ElSubMenu: typeof import("element-plus")["ElSubMenu"];
         ElMenuItem: typeof import("element-plus")["ElMenuItem"];
+        ElMenuItemGroup: typeof import("element-plus")["ElMenuItemGroup"];
         ElBreadcrumb: typeof import("element-plus")["ElBreadcrumb"];
         ElBreadcrumbItem: typeof import("element-plus")["ElBreadcrumbItem"];
 
@@ -147,12 +148,16 @@ declare module "vue-router" {
         /**
          * 侧栏分区的归属。
          *
-         * `docs/ui-architecture.md` §4.4：高亮**不再依赖 `route.path` 前缀匹配**——
-         * 那样 `/calendar/synodic/data` 与 `/calendar/gregory/data` 会互相干扰，
-         * 而分区是路由表里的显式声明。只需在域一级写一次，子路由由 vue-router 的
-         * `meta` 合并自动继承。
+         * 写成 `string` 而不是 `DomainId` 的字面量联合：`globals.d.ts` 是**环境声明**，
+         * 从 `src/entity/domain.ts` 引类型会让它变成普通模块并可能引入循环
+         * （`domain.ts` 要 import `plugin/menu.ts`，`menu.ts` 要 import `plugin/router.ts`，
+         * 而 `router.ts` 的 `meta` 要被本文件检查）。
+         *
+         * 代价是 `domain` 写错不会被 `vue-tsc` 拦住。补上那一步的是
+         * `src/entity/domain.ts` 的 `verifyDomainRoutes()`——它在应用启动时校验
+         * 每条登记路径都存在，路径错了直接抛错。
          */
-        domain?: "workspace" | "tool" | "system";
+        domain?: string;
         /**
          * 是否渲染侧栏与状态栏。
          *

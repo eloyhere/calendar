@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import type { StatementSync } from "node:sqlite";
 import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { app } from "electron";
 
 import {
@@ -24,9 +24,9 @@ import { DATABASE_MODULES, MODULE_BY_NAME } from "../shared/database-registry";
  *
  * ## 位置
  *
- * 22 个 `.sqlite` 在 `src/sqlite/` 下（`docs/design.md` §3）。开发期项目根就是仓库目录，
- * 打包后是 asar 根，两种情况都用 `app.getAppPath()` 定位——与 `main/workflow.ts`
- * 找 `scripts/operation` 是同一个做法。
+ * 22 个 `.sqlite` 在 `src/sqlite/` 下（`docs/design.md` §3）。目录怎么找见
+ * 下面的 `resolveDatabaseDirectory()`——**不能直接信 `app.getAppPath()`**，
+ * 那条路上踩过一次坑，原因写在那里。
  *
  * ## 连接池
  *
@@ -43,11 +43,61 @@ import { DATABASE_MODULES, MODULE_BY_NAME } from "../shared/database-registry";
  * 是软保证（让写语句得到一条能读懂的中文拒绝，而不是 `SQLITE_READONLY`）。
  */
 
-/** 项目根。开发期是仓库目录，打包后是 asar 根。 */
-const projectRoot: string = app.getAppPath();
+/**
+ * 分库目录。
+ *
+ * ## 为什么要试多个候选，而不是直接用 `app.getAppPath()`
+ *
+ * `app.getAppPath()` 在**正常启动**时是项目根（开发期）或 asar 根（打包后），
+ * 这两种情况都对。但它的语义其实是"**主脚本**所在的应用目录"，所以当 Electron
+ * 被用来跑一个散装脚本（`electron scripts/xxx.cjs`，验收截图就是这么跑的）时，
+ * 它返回的是 `scripts/`，于是分库路径被拼成 `scripts/src/sqlite`——
+ * 报出来的是"分库文件不存在：src/sqlite/synodic.sqlite"，
+ * 而那个**相对路径看起来完全正常**，人只会去怀疑数据没构建。
+ * 这个坑让日历页连续三版显示"这个时间窗口里没有历法数据"。
+ *
+ * 所以这里按顺序试：应用目录 → 工作目录 → 逐级向上找 `src/sqlite`。
+ * 命中即止，并且**把选中的那个记下来**（`databaseDirectory`），
+ * `/system/datasource` 会把它显示出来——路径这种东西不该靠猜。
+ */
+const resolveDatabaseDirectory = (): string => {
+    const candidates: string[] = [];
 
-/** 分库目录。 */
-const databaseDirectory: string = join(projectRoot, "src", "sqlite");
+    try {
+        candidates.push(resolve(app.getAppPath(), "src", "sqlite"));
+    } catch {
+        // `app` 还没 ready 时可能抛错；忽略，下面的候选不依赖它
+    }
+    candidates.push(resolve(process.cwd(), "src", "sqlite"));
+
+    /*
+     * 从本文件所在目录逐级向上找。
+     *
+     * 打包后 `__dirname` 是 `resources/app.asar/out/main`，往上两级就是 asar 根；
+     * 开发期是 `out/main`，往上两级是项目根。多找几级是为了容忍目录结构调整。
+     */
+    let cursor = __dirname;
+    for (let level = 0; level < 5; level += 1) {
+        candidates.push(join(cursor, "src", "sqlite"));
+        const parent = dirname(cursor);
+        if (parent === cursor) {
+            break;
+        }
+        cursor = parent;
+    }
+
+    for (const candidate of candidates) {
+        if (existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    // 一个都不存在时返回首选，让"分库文件不存在"的报错里带上最可能的那个路径
+    return candidates[0] ?? resolve("src", "sqlite");
+};
+
+/** 分库目录（实测选中的那一个）。 */
+const databaseDirectory: string = resolveDatabaseDirectory();
 
 /** 已打开的连接：模块名 → 连接。 */
 const connections: Map<string, DatabaseSync> = new Map();

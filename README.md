@@ -45,6 +45,43 @@ $ npm run build:linux
 > `build:win` 已被删除（它等价于 NSIS 的 `.exe` 安装包，与 `deploy` 的 MSI 重复）。
 > 需要 `.exe` 时用 `npx electron-builder --win nsis`。
 
+## 冒烟测试
+
+```bash
+# 跑 scripts/smoke/ 下的全部脚本
+$ npm run smoke
+
+# 只跑名字里含 markdown 的
+$ npm run smoke -- markdown
+
+# 只列出来，不跑
+$ npm run smoke -- --list
+```
+
+脚本在 `scripts/smoke/`，命名 `<被测对象>.smoke.ts`，**断言全过时退出码 0**。
+它们是「跑一次就丢」的：不引测试框架，用 `console` 逐条打印 `✓` / `✗`，失败时列出
+断言名并以 1 退出。对应地，`scripts/smoke/*.ts` 不在任何 `tsconfig` 的 `include` 里
+（见 `eslint.config.mjs` 的 `allowDefaultProject`），因此 `npm run typecheck` 不覆盖它们。
+
+总入口 `scripts/smoke.mts` 会先给每个脚本做一次 esbuild 打包再运行。原因不是偏好：
+Node 24 能靠类型擦除直接跑 `.ts`，但**不认无扩展名的相对导入**，所以只要被测模块
+往下还有一层 import，直接跑就会 `ERR_MODULE_NOT_FOUND`。叶子脚本走同一条路没有损失，
+深依赖的脚本则不再需要各自记一条 esbuild 命令。唯一的例外是 `markdown-render.smoke.ts`
+——它要编 `.vue`，自己用 vite 做，总入口原样放行。
+
+总入口自己写成 `.mts` 而不是 `.cjs`：`.cjs` 里的 `require()` 会踩
+`@typescript-eslint/no-require-imports`（`scripts/build-icons.cjs` 现在就带着这类报错），
+而 ESM 没有这个问题，还能被 `npm run typecheck:node` 一并检查（已加进
+`tsconfig.node.json` 的 `include`）。
+
+| 脚本 | 覆盖什么 |
+| --- | --- |
+| `markdown-parse.smoke.ts` | Markdown 解析：块级语法、行内标记、链接协议白名单、畸形输入不抛异常 |
+| `markdown-render.smoke.ts` | 卡片渲染：SFC 编译、三块插槽、每个块级分支、转义与 XSS 面 |
+| `virtual-list.smoke.ts` | 虚拟列表的区间算术（纯函数） |
+| `virtual-list-render.smoke.ts` | 虚拟列表渲染（SSR）与插槽参数 |
+| `store-cache.smoke.ts` | store 层读穿缓存、并发合并、LRU 淘汰 |
+
 ## Code style rules
 
 规则分布在三个文件里：`.prettierrc.yaml`（只管排版：引号、缩进、运算符空格、换行）、

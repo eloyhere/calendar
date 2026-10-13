@@ -126,6 +126,11 @@ electron-vite 模板的约定。
   结束标签，注释里写一份示例就等于提前关掉所在块，报错却是文件结尾处的
   `Invalid end tag`。
 - **`verifyPluginDependencies()` 只在开发期跑**：生产构建不做自检。
+- **不是每个组件都需要一个新依赖**：`src/component/card/MarkDownCard.vue` 要渲染
+  Markdown，但**没有**引 `markdown-it` 之类的渲染器——它自己写了一个白名单式解析器
+  （`src/component/card/markdown-parse.ts`），只出节点树、由 Vue 模板渲染，
+  全链路没有 `v-html`。加依赖前先看这条：这一层的入口只有 `dependencies.ts` 一处，
+  多一个包就多一处要跟着 `PLUGIN_VERSIONS` 维护的东西。
 
 ## 已验证
 
@@ -136,4 +141,6 @@ electron-vite 模板的约定。
 - `vue-tsc --noEmit -p tsconfig.web.json` 在我的改动范围内无报错。
   剩余报错都在 `src/share/structure/`（5 条既有）与 `src/store/chat.store.ts` /
   `src/view/agent/Chat*View.vue`（会话功能，正在开发中）。
+- `npm run smoke` 全绿：5 个冒烟脚本（Markdown 解析 / 卡片渲染 / 虚拟列表算术与渲染 /
+  store 缓存）。其中卡片渲染那份会把两个 `.vue` 真编译、真渲染，再检查产出的 HTML。
 

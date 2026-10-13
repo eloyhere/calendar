@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 历法工作区的「简介」视图：这套历法的规则、建元与换算口径。
  *
@@ -25,10 +25,10 @@
 
 import { computed } from "vue";
 
-import PageShell from "../../component/PageShell.vue";
-import type { Row } from "../../datasource/sqlite";
-import type { CalendarSystem } from "../../entity/calendar";
-import { numberOf, useQuery, useQueryOne } from "../../state/use-calendar-query";
+import PageShell from "../../../component/PageShell.vue";
+import type { Row } from "../../../datasource/sqlite";
+import type { CalendarSystem } from "../../../entity/calendar";
+import { numberOf, useQuery, useQueryOne } from "../../../state/use-calendar-query";
 
 interface Props {
     /** 当前历法体系 */

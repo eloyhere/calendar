@@ -26,8 +26,8 @@
  * 深度研究页的一条规矩，这里是它的推广。
  */
 
-import { computed, ref, shallowRef, watch } from "vue";
-import type { ComputedRef, Ref } from "vue";
+import { computed, ref, shallowRef, toValue, watch } from "vue";
+import type { ComputedRef, MaybeRefOrGetter, Ref } from "vue";
 
 import type { Row } from "../datasource/sqlite";
 import { bigOf } from "../datasource/sqlite";
@@ -57,12 +57,11 @@ export interface QueryResult<TRow> {
 /** 把任意异常收成一句人读的说明。 */
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-/** 语句来源：字面量、`null`，或一个 getter（跟着响应式依赖重算）。 */
-export type StatementSource = string | null | (() => string | null);
+/** 语句来源：字面量、`null`、ref 或 getter（后两者跟着响应式依赖重算）。 */
+export type StatementSource = MaybeRefOrGetter<string | null>;
 
 /** 解出语句文本。 */
-const resolveStatement = (source: StatementSource): string | null =>
-    typeof source === "function" ? source() : source;
+const resolveStatement = (source: StatementSource): string | null => toValue(source);
 
 /**
  * 跑一条聚合查询。
@@ -73,7 +72,7 @@ const resolveStatement = (source: StatementSource): string | null =>
  * @param parameters 具名参数。**返回 getter**，让它跟着响应式依赖一起重算
  */
 export function useQuery<TRow extends Row = Row>(
-    module: string,
+    module: MaybeRefOrGetter<string>,
     statement: StatementSource,
     parameters: () => Record<string, bigint | number | string | null> = () => ({})
 ): QueryResult<TRow> {
@@ -96,21 +95,21 @@ export function useQuery<TRow extends Row = Row>(
         const current = sequence;
         loading.value = true;
 
-        void queryModule(module, statement, parameters())
+        void queryModule(module, sql, parameters())
             .then((result) => {
                 // 回来的不是最新一次请求就丢掉：切体系时两条查询会并发，
                 // 慢的那条后到会把新体系的数据覆盖成旧体系的。
                 if (current !== sequence) {
                     return;
                 }
-            cell.value = result as TRow[];
+                cell.value = result as TRow[];
                 error.value = "";
             })
             .catch((cause: unknown) => {
                 if (current !== sequence) {
                     return;
                 }
-            cell.value = [];
+                cell.value = [];
                 error.value = messageOf(cause);
             })
             .finally(() => {
@@ -128,6 +127,7 @@ export function useQuery<TRow extends Row = Row>(
      */
     watch(
         () => [
+            toValue(module),
             resolveStatement(statement),
             JSON.stringify(parameters(), (_key, value) =>
                 typeof value === "bigint" ? value.toString() : value
@@ -159,8 +159,8 @@ export interface QueryOneResult<TRow> {
 }
 
 export function useQueryOne<TRow extends Row = Row>(
-    module: string,
-    statement: string | null,
+    module: MaybeRefOrGetter<string>,
+    statement: StatementSource,
     parameters: () => Record<string, bigint | number | string | null> = () => ({})
 ): QueryOneResult<TRow> {
     const cell = ref<TRow | null>(null) as Ref<TRow | null>;
@@ -169,7 +169,8 @@ export function useQueryOne<TRow extends Row = Row>(
     let sequence = 0;
 
     const reload = (): void => {
-        if (statement === null) {
+        const sql = resolveStatement(statement);
+        if (sql === null) {
             cell.value = null;
             return;
         }
@@ -177,7 +178,7 @@ export function useQueryOne<TRow extends Row = Row>(
         const current = sequence;
         loading.value = true;
 
-        void queryModuleOne(module, statement, parameters())
+        void queryModuleOne(module, sql, parameters())
             .then((result) => {
                 if (current !== sequence) {
                     return;
@@ -200,7 +201,13 @@ export function useQueryOne<TRow extends Row = Row>(
     };
 
     watch(
-        () => [statement, JSON.stringify(parameters(), (_key, value) => (typeof value === "bigint" ? value.toString() : value))],
+        () => [
+            toValue(module),
+            resolveStatement(statement),
+            JSON.stringify(parameters(), (_key, value) =>
+                typeof value === "bigint" ? value.toString() : value
+            )
+        ],
         () => reload(),
         { immediate: true }
     );
@@ -224,16 +231,16 @@ export function useQueryOne<TRow extends Row = Row>(
 
 /** 取一张表的列。表名由主进程按分库登记表白名单校验（见 `main/database.ts`）。 */
 export function useTableColumns(
-    module: string,
-    table: () => string
+    module: MaybeRefOrGetter<string>,
+    table: MaybeRefOrGetter<string>
 ): { columns: Ref<CalendarColumnInfo[]>; error: Ref<string> } {
     const columns = shallowRef<CalendarColumnInfo[]>([]);
     const error = ref("");
 
     watch(
-        () => [module, table()] as const,
+        () => [toValue(module), toValue(table)] as const,
         ([currentModule, currentTable]) => {
-            if (currentTable.length === 0) {
+            if (currentTable.length === 0 || currentModule.length === 0) {
                 columns.value = [];
                 return;
             }

@@ -40,6 +40,7 @@ import type { ComputedRef, Ref } from "vue";
 import type {
     ChatChannel,
     ChatChannelInfo,
+    ChatCitation,
     ChatMessage,
     ChatSession
 } from "../entity/chat";
@@ -101,7 +102,7 @@ const StubReplies: Record<ChatChannel, readonly string[]> = {
 };
 
 /** 引用来源：轮次落到 `citation` 形态时附上。 */
-const StubCitations: Record<ChatChannel, readonly ChatMessage["citations"] & object[]> = {
+const StubCitations: Record<ChatChannel, readonly ChatCitation[]> = {
     create: [],
     research: [
         {

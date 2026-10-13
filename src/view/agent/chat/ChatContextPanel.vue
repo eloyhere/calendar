@@ -32,6 +32,8 @@
 import { computed, ref, watch } from "vue";
 
 import type { ChatPageApi } from "../../../state/use-chat-page";
+import { useChatStore } from "../../../store/chat.store";
+import { relativeTime } from "../../../entity/chat";
 
 /** 一个标签页。 */
 export interface ChatContextTab {
@@ -93,6 +95,54 @@ const statusText = computed((): string => {
 
     return (session.value?.messageCount ?? 0) > 0 ? "空闲" : "还没有发言";
 });
+
+/* -------------------------------------------------------------------------- */
+/* 本地缓存                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const store = useChatStore();
+
+/**
+ * 缓存规模。
+ *
+ * 用 store 自己导出的两个 computed（`total` / `messageTotal`）而不是去数
+ * `store.state.value.sessions`：Pinia 对 store 里的 ref 做了类型解包，
+ * 读到的 `store.state` 已经是 `ChatState` 而不是 `Ref<ChatState>`——按 `.value`
+ * 写会在类型检查阶段直接报「`ChatState` 上不存在 `value`」。用现成的 computed
+ * 既对得上类型，也不必在这里再遍历一遍消息。
+ *
+ * 不调 `store.stats()` 是有意的：那个函数每次都读 `localStorage` 并解析整份快照，
+ * 挂在模板上等于每次渲染都做一遍全量解析。状态里的会话与消息就是刚写下去的那一份，
+ * 两者只差一个防抖窗口，对这个面板足够准。
+ */
+const cache = computed(() => {
+    return {
+        sessions: store.total,
+        messages: store.messageTotal,
+        savedAt: store.lastWrite?.at ?? null,
+        ok: store.lastWrite?.ok
+    };
+});
+
+/** 缓存的落盘时刻。 */
+const savedText = computed((): string => {
+    const at = cache.value.savedAt;
+
+    return at === null ? "尚未写入" : `缓存于 ${relativeTime(at)}`;
+});
+
+/** 字节数按 KB 显示：一份对话快照顶多几十 KB，不必上 MB 档。 */
+const sizeText = computed((): string => {
+    const bytes = store.lastWrite?.bytes ?? 0;
+
+    return bytes === 0 ? "" : `${(bytes / 1024).toFixed(1)} KB`;
+});
+
+/** 清空历史；带确认，不做"删了就没了"的按钮。 */
+function clearHistory(): void {
+    store.clearHistory();
+    props.chat.startSession();
+}
 </script>
 
 <template>
@@ -115,9 +165,43 @@ const statusText = computed((): string => {
 
             <ElEmpty v-else description="还没有打开会话" :image-size="42" />
 
+            <!-- 缓存状态：写没写下去、有多少、什么时候写的 -->
+            <div class="chat-context__cache">
+                <div class="chat-context__cache-row">
+                    <span class="xy-dim">本地缓存</span>
+                    <ElTag
+                        :type="cache.ok === false ? 'danger' : cache.ok ? 'success' : 'info'"
+                        size="small"
+                        effect="plain">
+                        {{ cache.ok === false ? "写入失败" : cache.ok ? "已写入" : "未写入" }}
+                    </ElTag>
+                </div>
+
+                <span class="xy-dim numeral">
+                    {{ cache.sessions }} 条会话 · {{ cache.messages }} 条消息
+                    <template v-if="sizeText"> · {{ sizeText }}</template>
+                </span>
+
+                <div class="chat-context__cache-row">
+                    <span class="xy-dim">{{ savedText }}</span>
+
+                    <ElPopconfirm
+                        title="清空全部会话与缓存？"
+                        confirm-button-text="清空"
+                        cancel-button-text="取消"
+                        width="220"
+                        @confirm="clearHistory">
+                        <template #reference>
+                            <ElButton text size="small" type="danger">清空</ElButton>
+                        </template>
+                    </ElPopconfirm>
+                </div>
+            </div>
+
             <p class="xy-note">
-                会话与消息都只在这个进程的内存里（`src/store/chat.store.ts`），
-                <strong>刷新即清空</strong>：对话还没有对应的表。
+                会话与消息存在浏览器本地存储里（`src/store/chat.cache.ts`），
+                <strong>刷新与重启后自动恢复</strong>；清空之后会重新铺一次演示会话。
+                对话还没有对应的表，所以这份缓存是当前的持久化方案，将来会换成 sqlite。
             </p>
         </section>
 
@@ -166,6 +250,25 @@ const statusText = computed((): string => {
 
 .chat-context__title {
     word-break: break-all;
+}
+
+.chat-context__cache {
+    background: var(--el-fill-color-blank);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+    padding: 8px 10px;
+}
+
+.chat-context__cache-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    min-height: 22px;
 }
 
 .chat-context :deep(.el-descriptions__label) {

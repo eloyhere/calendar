@@ -8,8 +8,8 @@
  * 契约说明：repository.ts 的 Repository 是同步契约，而数据访问层的驱动是异步的
  * （Sqlite.query 返回 Promise），二者无法同时满足，故本层实现同形的异步接口
  * AsyncRepository：方法名、参数、返回类型与 Repository 一一对应，只把返回值包成 Promise。
- * chronology：纪年。实体已定义，但 calendar.xlsx 不含纪年数据。
- *   数据源缺失，仅建表留空；层次上与 epoch 对接。
+ * chronology：纪年。一个朔望年一条，与八部历法的年表一一对应。
+ *   八列年各取「纪年首所在」的那一年；八列 lengthOf<X>Month 是那一年的月数。
  */
 import type { Entity } from "../entity/entity";
 import type { Chronology } from "../entity/chronology";
@@ -269,6 +269,20 @@ export class ChronologyRepository implements AsyncRepository<bigint, Chronology>
             relative: bigOf(row.relative),
             absolute: bigOf(row.absolute),
             epoch: bigOf(row.epoch),
+            astronomy: bigOf(row.astronomy),
+            lengthOfAstronomyMonth: bigOf(row.lengthOfAstronomyMonth),
+            climate: bigOf(row.climate),
+            lengthOfClimateMonth: bigOf(row.lengthOfClimateMonth),
+            gregory: bigOf(row.gregory),
+            lengthOfGregoryMonth: bigOf(row.lengthOfGregoryMonth),
+            jupiter: bigOf(row.jupiter),
+            lengthOfJupiterMonth: bigOf(row.lengthOfJupiterMonth),
+            natural: bigOf(row.natural),
+            lengthOfNaturalMonth: bigOf(row.lengthOfNaturalMonth),
+            tree: bigOf(row.tree),
+            lengthOfTreeMonth: bigOf(row.lengthOfTreeMonth),
+            tropical: bigOf(row.tropical),
+            lengthOfTropicalMonth: bigOf(row.lengthOfTropicalMonth),
             synodic: bigOf(row.synodic),
             lengthOfSynodicMonth: bigOf(row.lengthOfSynodicMonth),
             start: bigOf(row.start),

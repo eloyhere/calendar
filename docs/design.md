@@ -121,7 +121,6 @@ scripts/database/<entity>.py          该实体的初始化脚本（调用上面
 | `era.py`               | `era.sqlite`                 | `era.ts` `Era`                                  | `era`                                    | 1,184               |
 | `person.py`            | `person.sqlite`              | `event.ts` `Person`                             | `person`                                 | 425                 |
 | `event.py`             | `event.sqlite`               | `event.ts` `Event`                              | `event`                                  | 2,379               |
-| `chronology.py`        | `chronology.sqlite`          | `chronology.ts` `Chronology`                    | `chronology`                             | 23,500              |
 | `astronomy.py`         | `astronomy.calendar.sqlite`  | `astronomy.ts` `AstronomyYear`/`AstronomyMonth` | `astronomy_year`, `astronomy_month`      | 23,500 / 290,654    |
 | `climate.py`           | `climate.sqlite`             | `climate.ts` `Climate`/`ClimateYear`/`ClimateMonth` | `climate`, `climate_year`, `climate_month` | 1,743,926 / 23,449 / 564,000 |
 | `gregory.py`           | `gregory.calendar.sqlite`    | `gregory.ts` `GregoryYear`/`GregoryMonth`       | `gregory_year`, `gregory_month`          | 23,501 / 281,998    |
@@ -129,6 +128,7 @@ scripts/database/<entity>.py          该实体的初始化脚本（调用上面
 | `natural.py`           | `natural.calendar.sqlite`    | `natural.ts` `NaturalYear`/`NaturalMonth`       | `natural_year`, `natural_month`          | 23,500 / 290,654    |
 | `tree.py`              | `tree.calendar.sqlite`       | `tree.ts` `TreeYear`/`TreeMonth`                | `tree_year`, `tree_month`                | 23,449 / 281,273    |
 | `tropical.py`          | `tropical.calendar.sqlite`   | `tropical.ts` `TropicalYear`/`TropicalMonth`    | `tropical_year`, `tropical_month`        | 23,500 / 281,998    |
+| `chronology.py`        | `chronology.sqlite`          | `chronology.ts` `Chronology`                    | `chronology`                             | 23,500              |
 
 合计 22 个数据库、98 张表、84,934,083 行（其中实体表 19,029,707 行，
 其余是 `src/entity/*.ts` 里复数属性对应的关联表）。
@@ -138,6 +138,13 @@ scripts/database/<entity>.py          该实体的初始化脚本（调用上面
 逐条写在该模块的表里：`gregory` / `climate` / `tree` 完全由工作簿推出；`natural` 的年
 就是朔望年的纪年块（建元当天恰为「轩辕 1 年 1 月 1 日」）；`tropical` / `astronomy` /
 `jupiter` 没有星历表，用各自 `RULE` 给出的**平均**周期（365.2422 日、11.862 年）从建元起算。
+
+**`chronology` 与八部历法的年表一一对应**（`src/entity/chronology.ts`）：一个朔望年一条，
+八列年（`astronomy` / `climate` / `gregory` / `jupiter` / `natural` / `tree` / `tropical` /
+`synodic`）各取「**纪年首所在**」的那一年 —— 一个朔望年约 354 天、可能跨历法年，
+故以 `start` 定归属，与 `calendar.xlsx` 的纪年块标签取「块首所在年份」同一口径；
+八列 `lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值。
+因此 `chronology` 必须排在七部派生历法**之后**建库（`STORE_ORDER` 的最后一位）。
 
 ### 3.1 跨库关联
 

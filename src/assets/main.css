@@ -37,8 +37,22 @@ body,
 body {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
-    font-family:
-        "Inter", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, system-ui, sans-serif;
+    font-family: var(--xy-font-ui);
+    font-size: var(--xy-font-md);
+    line-height: var(--xy-leading-normal);
+    color: var(--el-text-color-primary);
+}
+
+/*
+ * 焦点环。
+ *
+ * WCAG 2.2 SC 2.4.11 要求聚焦的元素不能被作者内容完全遮住，SC 2.4.13 要求指示
+ * 至少 2px 且与未聚焦状态有 3:1 对比。Element Plus 自带的 `:focus-visible` 在处理
+ * 表格行、日历单元格这类自定义可聚焦元素时不够显眼，这里补一条统一规则。
+ */
+:focus-visible {
+    outline: 2px solid var(--el-color-primary);
+    outline-offset: 1px;
 }
 
 /* 历表数字对齐：年份、时刻、行数一律等宽 */
@@ -96,8 +110,8 @@ body {
 .xy-panel {
     background: var(--el-bg-color);
     border: 1px solid var(--el-border-color-lighter);
-    border-radius: 8px;
-    padding: 14px 16px;
+    border-radius: var(--xy-radius-md);
+    padding: 10px 12px;
 }
 
 /** 面板标题：左侧一道主色竖线，是参考项目里全站统一的分块语言。 */
@@ -105,10 +119,11 @@ body {
     align-items: center;
     color: var(--el-text-color-primary);
     display: flex;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-    gap: 8px;
-    margin: 0 0 12px;
+    gap: 6px;
+    /* 12px 收到 6px。全站二十多个面板各收 6px，累计是几百像素的高度 */
+    margin: 0 0 6px;
 }
 
 .xy-panel-title::before {
@@ -124,9 +139,9 @@ body {
 /** 次级说明文字：口径、依据、为什么这里是空的。 */
 .xy-note {
     color: var(--el-text-color-secondary);
-    font-size: 13px;
-    line-height: 1.8;
-    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 6px 0 0;
 }
 
 .xy-note:first-child {

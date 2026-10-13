@@ -1,0 +1,132 @@
+/**
+ * 设计令牌：整个应用的颜色、间距、字号、圆角、阴影的唯一来源。
+ *
+ * ## 为什么单独一份，而不是散在各处
+ *
+ * 页面多了以后，"这个灰该用哪一档"会自然地长出七八种近似值。令牌表把它们压成
+ * 有限的几档，改一处全站跟着变。这也是 Element Plus 官方推荐的做法：
+ * 覆盖它的 `--el-*` 变量，而不是逐组件写 `:deep()` 去改样式。
+ *
+ * ## 配色：蓝白浅色系（Element Plus 默认）
+ *
+ * 用户明确要求"蓝白浅色系，即 Element Plus 默认配色"。所以：
+ *
+ * - **主色不改**：`--el-color-primary` 就是 Element Plus 的 `#409eff`。它的九个
+ *   浅色档（`light-3/5/7/8/9`）由 `element-plus/theme-chalk` 自己算出来，
+ *   这里不重复定义——重复定义就会在升级时与上游打架。
+ * - **只补白**：把"页面底色 / 卡片底 / 分隔线"这三层定死，让全站的白有层次，
+ *   而不是一片纯白看不出边界。
+ *
+ * 三层界面底色（来自 `--el-bg-color` 系列，全部是蓝白系的中性灰）：
+ *
+ * | 层     | 用途                       | 值                        |
+ * | ------ | -------------------------- | ------------------------- |
+ * | 底层   | 内容区背景（页面底）       | `--el-bg-color-page`      |
+ * | 卡片层 | 面板、表格、日历单元格     | `--el-bg-color`（纯白）   |
+ * | 浮起层 | 下拉、气泡、抽屉、对话框   | `--el-bg-color-overlay`   |
+ *
+ * ## 间距：4 的倍数
+ *
+ * 采用 Carbon 的间距刻度（2/4/8/12/16/24/32/40/48/64），组件内部 8–12、
+ * 卡片内边距 16、区块间距 24、页面留白 24–32。
+ * 依据：<https://carbondesignsystem.com/building-blocks/foundations/spacing/overview>
+ *
+ * ## 字号
+ *
+ * 基准 14px，行高 1.5 倍以上（WCAG 2.2 SC 1.4.12 要求 1.5× 行高下不丢内容）。
+ * 历表数字一律 `tabular-nums`——见 `main.css` 的 `.numeral`。
+ */
+
+:root {
+    /* ── 间距 ─────────────────────────────────────────────────────────────── */
+    --xy-space-1: 2px;
+    --xy-space-2: 4px;
+    --xy-space-3: 8px;
+    --xy-space-4: 12px;
+    --xy-space-5: 16px;
+    --xy-space-6: 24px;
+    --xy-space-7: 32px;
+    --xy-space-8: 48px;
+
+    /* ── 圆角 ─────────────────────────────────────────────────────────────── */
+    --xy-radius-sm: 4px;
+    --xy-radius-md: 6px;
+    --xy-radius-lg: 8px;
+    --xy-radius-xl: 12px;
+    --xy-radius-pill: 999px;
+
+    /* ── 字号 ─────────────────────────────────────────────────────────────── */
+    --xy-font-2xs: 11px;
+    --xy-font-xs: 12px;
+    --xy-font-sm: 13px;
+    --xy-font-md: 14px;
+    --xy-font-lg: 16px;
+    --xy-font-xl: 18px;
+    --xy-font-2xl: 22px;
+    --xy-font-3xl: 28px;
+    --xy-font-display: 34px;
+
+    /* ── 行高 ─────────────────────────────────────────────────────────────── */
+    --xy-leading-tight: 1.25;
+    --xy-leading-snug: 1.4;
+    --xy-leading-normal: 1.6;
+    --xy-leading-relaxed: 1.8;
+
+    /* ── 字重 ─────────────────────────────────────────────────────────────── */
+    --xy-weight-normal: 400;
+    --xy-weight-medium: 500;
+    --xy-weight-semibold: 600;
+
+    /* ── 字族 ─────────────────────────────────────────────────────────────── */
+    --xy-font-ui:
+        "Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial,
+        system-ui, sans-serif;
+    /* 历表、干支、数字：等宽，保证列对齐 */
+    --xy-font-mono: "JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, "Courier New", monospace;
+
+    /* ── 层次与描边（数值取自 Element Plus 自身的变量，避免第二套灰阶）──────── */
+    --xy-layer-page: var(--el-bg-color-page);
+    --xy-layer-card: var(--el-bg-color);
+    --xy-layer-float: var(--el-bg-color-overlay);
+    --xy-hairline: var(--el-border-color-lighter);
+    --xy-hairline-strong: var(--el-border-color);
+
+    /* ── 阴影：只用于"浮起来"的东西，平面内容一律靠描边分层 ─────────────── */
+    --xy-shadow-sm: 0 1px 2px rgb(0 0 0 / 4%);
+    --xy-shadow-md: 0 4px 12px rgb(0 0 0 / 8%);
+    --xy-shadow-lg: 0 8px 28px rgb(0 0 0 / 12%);
+
+    /* ── 布局硬尺寸 ───────────────────────────────────────────────────────── */
+    --xy-rail-width: 56px; /* 一级：图标窄栏 */
+    --xy-panel-width: 240px; /* 二级：域内页面列表 */
+    --xy-topbar-height: 48px;
+    --xy-statusbar-height: 26px;
+
+    /* ── 动效：100/300 两档，超过 300ms 的过渡在桌面应用里会显得拖沓 ─────── */
+    --xy-duration-fast: 120ms;
+    --xy-duration-base: 200ms;
+    --xy-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/**
+ * 高对比 / 减少动效。
+ *
+ * `prefers-reduced-motion` 是系统级设置，用户开它通常有前庭失调等原因，
+ * 不是"不喜欢动画"。这里把过渡时间压到 0 而不是删掉 `transition`——
+ * 删掉会让 `transitionend` 监听永远不触发。
+ */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --xy-duration-fast: 0ms;
+        --xy-duration-base: 0ms;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
+}

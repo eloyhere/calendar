@@ -60,7 +60,7 @@ const draft = computed({
 const hint = computed((): string =>
     props.chat.pending.value
         ? "助手正在回复；此时再发会排到它后面"
-        : "会话与消息只存在内存里，刷新即清空"
+        : "会话已缓存到本地，刷新与重启后还在"
 );
 
 /** 键盘处理：中文输入法组词期间一律放行，不做发送。 */

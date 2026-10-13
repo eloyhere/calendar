@@ -18,7 +18,7 @@
  * ### 2. 参数化项的展开
  *
  * 有一条路由是参数化的：`/calendar/:system/:view?`。菜单要的不是这一条，而是
- * 「朔望历 / 格里高利历 / 节气表 / 更多历法」四项。这一层展开**不在路由表里**
+ * 「朔望历 / 格里高利历 / 节气历 / 更多历法」四项。这一层展开**不在路由表里**
  * （路由表要保持"每一页都能被直接检索到"），而在下面的 `MENU_LAYOUT`：
  * 它只说"哪个菜单项指向哪条路由、带什么参数、叫什么名字"，
  * **不重复定义路由**——`resolve` 拿不到对应路由时直接报错，而不是悄悄少一项。
@@ -61,31 +61,83 @@ export interface MenuNode {
     children: MenuNode[];
 }
 
-/** 按路径取一条路由记录（深度优先，够用：路由表最多三层且路径唯一）。 */
-const routeAt = (path: string): { title?: string; icon?: IconName; description?: string } | null => {
+/**
+ * 把一条注册路径转成正则，用来匹配**具体地址**。
+ *
+ * `/calendar/:system/:view?` 要能匹配 `/calendar/natural` 与
+ * `/calendar/natural/year`；`/agent/chat/:mode?` 要能匹配 `/agent/chat`。
+ * 可选参数（`?` 后缀）必须**整体可省**——少一个 `/` 都不行，
+ * 否则 `/agent/chat` 会被判为不匹配。
+ */
+const patternOf = (path: string): RegExp => {
+    const segments = path.split("/").filter((segment) => segment.length > 0);
+    const parts: string[] = [];
+
+    for (const segment of segments) {
+        const optional = segment.endsWith("?");
+        const name = optional ? segment.slice(0, -1) : segment;
+
+        if (name.startsWith(":")) {
+            // `:pathMatch(.*)*` 这类通配：吞掉后面全部
+            if (name.includes("(") || segment.endsWith("*")) {
+                parts.push("(?:/.*)?");
+                continue;
+            }
+            parts.push(optional ? "(?:/[^/]+)?" : "/[^/]+");
+        } else {
+            parts.push(`/${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+        }
+    }
+
+    return new RegExp(`^${parts.join("") || "/"}/?$`);
+};
+
+/**
+ * 按**具体地址**取一条路由记录。
+ *
+ * 关键在于"具体地址"：登记表里写的是 `/calendar/natural`，而路由表里注册的是
+ * `/calendar/:system/:view?`。早先的版本按字符串相等比对，于是**每一条具体路径
+ * 都判为"不存在"**，`verifyDomainRoutes()` 在启动时抛出四十条错误的清单，
+ * 整个应用白屏。这里按 vue-router 的规则做参数匹配。
+ *
+ * 返回值 `null` 表示"没有这条路由"，`{}` 表示"有这条路由但它没有 `meta`"
+ * ——两者要分开：前者是配置错误，后者是合法情况（布局路由就没有 `meta.title`）。
+ *
+ * 命中多条时按**静态段更多者优先**：`/calendar/table/:system` 与
+ * `/calendar/:system/:view?` 都能匹配 `/calendar/table/foo`，
+ * 而前者才是作者想指的那条。
+ */
+export const routeAt = (path: string): { title?: string; icon?: IconName; description?: string } | null => {
     interface Walkable {
         path: string;
         meta?: { title?: string; icon?: IconName; description?: string };
         children?: readonly Walkable[];
     }
 
-    const walk = (list: readonly Walkable[]): Walkable["meta"] | null => {
+    const normalize = (value: string): string =>
+        value.length > 1 && value.endsWith("/") ? value.slice(0, -1) : value;
+
+    let best: Walkable["meta"] | null = null;
+    let bestScore = -1;
+
+    const walk = (list: readonly Walkable[]): void => {
         for (const record of list) {
-            if (record.path === path) {
-                // `meta` 可能整个不存在：返回空对象而不是 `undefined`，
-                // 让调用方只需判 `null`（"没找到"）与"找到了但没有 meta"两种情况。
-                return record.meta ?? {};
+            const registered = normalize(record.path);
+            if (registered.length > 0 && patternOf(registered).test(normalize(path))) {
+                const score = registered
+                    .split("/")
+                    .filter((segment) => segment.length > 0 && !segment.startsWith(":")).length;
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = record.meta ?? {};
+                }
             }
-            const found = walk(record.children ?? []);
-            if (found !== null) {
-                return found;
-            }
+            walk(record.children ?? []);
         }
-        return null;
     };
 
-    const found = walk(routes as unknown as readonly Walkable[]);
-    return found ?? null;
+    walk(routes as unknown as readonly Walkable[]);
+    return best;
 };
 
 /** 一个菜单项的声明：指向哪条路由、取什么名字。 */
@@ -203,7 +255,7 @@ const MENU_LAYOUT: readonly MenuSectionDeclaration[] = [
                     },
                     {
                         route: "/calendar/:system/:view?",
-                        title: "节气表",
+                        title: "节气历",
                         params: { system: "climate", view: "entry" },
                         icon: "Clock"
                     },

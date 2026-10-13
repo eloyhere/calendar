@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 历法工作区的「数据」视图：这套历法的历表原始数据。
  *
@@ -24,13 +24,13 @@
 
 import { computed, ref } from "vue";
 
-import DataTable from "../../component/data/DataTable.vue";
-import PageShell from "../../component/PageShell.vue";
-import type { TableColumn } from "../../component/data/table-column";
-import { isNumericType, PRIMARY_COLUMN_CANDIDATES } from "../../component/data/table-column";
-import type { Row } from "../../datasource/sqlite";
-import type { CalendarSystem } from "../../entity/calendar";
-import { useQuery, useTableColumns } from "../../state/use-calendar-query";
+import DataTable from "../../../component/data/DataTable.vue";
+import PageShell from "../../../component/PageShell.vue";
+import type { TableColumn } from "../../../component/data/table-column";
+import { isNumericType, PRIMARY_COLUMN_CANDIDATES } from "../../../component/data/table-column";
+import type { Row } from "../../../datasource/sqlite";
+import type { CalendarSystem } from "../../../entity/calendar";
+import { useQuery, useTableColumns } from "../../../state/use-calendar-query";
 
 interface Props {
     /** 当前历法体系 */

@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import type { ChildProcessWithoutNullStreams } from "child_process";
 import { existsSync, readFileSync, statSync } from "fs";
-import { delimiter, join } from "path";
+import { delimiter, dirname, join } from "path";
 import { app } from "electron";
 
 import type {
@@ -37,8 +37,48 @@ import type {
  * 判定结果缓存在 `plan` 里，每次运行不重复扫 PATH。
  */
 
-/** 项目根。开发期是仓库目录，打包后是 asar 根。 */
-const projectRoot = app.getAppPath();
+/**
+ * 项目根。
+ *
+ * **不能直接用 `app.getAppPath()`**：它的语义是"**主脚本**所在的应用目录"，
+ * 正常启动时是项目根（开发期）或 asar 根（打包后），两种情况都对；
+ * 但 Electron 被用来跑一个散装脚本时（`electron scripts/xxx.cjs`），
+ * 它返回的是 `scripts/`，于是命令层被拼成 `scripts/scripts/operation`——
+ * 而报错里那条**相对路径看起来完全正常**，人只会去怀疑没 build。
+ *
+ * 这与 `main/database.ts` 找 `src/sqlite` 是同一类问题，所以用同一套解法：
+ * 按顺序试应用目录、工作目录、以及从本文件逐级向上，命中即止。
+ */
+const resolveProjectRoot = (): string => {
+    const candidates: string[] = [];
+
+    try {
+        candidates.push(app.getAppPath());
+    } catch {
+        // `app` 还没 ready 时可能抛错；忽略，下面的候选不依赖它
+    }
+    candidates.push(process.cwd());
+
+    let cursor = __dirname;
+    for (let level = 0; level < 5; level += 1) {
+        candidates.push(cursor);
+        const parent = dirname(cursor);
+        if (parent === cursor) {
+            break;
+        }
+        cursor = parent;
+    }
+
+    for (const candidate of candidates) {
+        if (existsSync(join(candidate, "scripts", "operation"))) {
+            return candidate;
+        }
+    }
+
+    return candidates[0] ?? process.cwd();
+};
+
+const projectRoot = resolveProjectRoot();
 
 const operationDir = join(projectRoot, "scripts", "operation");
 

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 历法工作区的「日历」视图：年 → 月 → 日三级钻取。
  *
@@ -27,11 +27,11 @@
 
 import { computed, ref, watch } from "vue";
 
-import PageShell from "../../component/PageShell.vue";
-import AppIcon from "../../component/AppIcon.vue";
-import type { Row } from "../../datasource/sqlite";
-import type { CalendarSystem } from "../../entity/calendar";
-import { textOf, useQuery } from "../../state/use-calendar-query";
+import PageShell from "../../../component/PageShell.vue";
+import AppIcon from "../../../component/AppIcon.vue";
+import type { Row } from "../../../datasource/sqlite";
+import type { CalendarSystem } from "../../../entity/calendar";
+import { textOf, useQuery } from "../../../state/use-calendar-query";
 
 interface Props {
     /** 当前历法体系 */

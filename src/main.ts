@@ -3,6 +3,17 @@ import { createPinia } from "pinia";
 
 import { installPlugins } from "./plugin";
 import { installCalendarRunner } from "./datasource/runner";
+/*
+ * 样式的引入顺序有含义，`tokens.css` 必须在 `main.css` 之前：
+ *
+ * 1. `element-plus/dist/index.css`——由 `plugin/dependencies.ts` 引入，它定义全部
+ *    `--el-*` 变量；
+ * 2. `tokens.css`——本项目自己的令牌，**引用** `--el-*` 而不是覆盖它们；
+ * 3. `main.css`——全局重置与工具类，引用第 2 步的令牌。
+ *
+ * CSS 变量未定义时不会报错，只会静默回退成空值，所以顺序不能靠"恰好管用"维持。
+ */
+import "./assets/tokens.css";
 import "./assets/main.css";
 import App from "./App.vue";
 

@@ -28,6 +28,7 @@ import { createSSRApp } from "vue";
 // 子路径，SSR 用到的就是它，不必再引 `@vue/server-renderer`
 import { renderToString } from "vue/server-renderer";
 import { build } from "vite";
+import type { Component } from "vue";
 
 /** 断言收集。 */
 const failures: string[] = [];
@@ -127,17 +128,28 @@ async function compile(): Promise<string> {
     return join(WORKDIR, "bundle.mjs");
 }
 
+/**
+ * 编译产物里我们用到的那几个导出。
+ *
+ * `Component` 是 vue 自己的组件类型，`createSSRApp` 与 `app.component()` 都收它；
+ * 写 `as never` 也能过编译，但那样等于把类型检查关掉——这里如实声明。
+ */
+interface Bundle {
+    MarkDownCard: Component;
+    ElCard: Component;
+    ElIcon: Component;
+    parseMarkdown: (
+        source: string
+    ) => Array<{ kind: string; items?: unknown[]; children?: unknown[] }>;
+}
+
 /** 渲染一次，拿到 HTML 字符串。 */
 async function render(bundle: string, props: Record<string, unknown>): Promise<string> {
-    const module = (await import(pathToFileURL(bundle).href)) as {
-        MarkDownCard: unknown;
-        ElCard: unknown;
-        ElIcon: unknown;
-    };
+    const module = (await import(pathToFileURL(bundle).href)) as Bundle;
 
-    const app = createSSRApp(module.MarkDownCard as never, props);
-    app.component("ElCard", module.ElCard as never);
-    app.component("ElIcon", module.ElIcon as never);
+    const app = createSSRApp(module.MarkDownCard, props);
+    app.component("ElCard", module.ElCard);
+    app.component("ElIcon", module.ElIcon);
 
     return renderToString(app);
 }
@@ -149,13 +161,7 @@ try {
 
     // 解析与渲染之间的接缝也要查：段落漏给 `children` 时，块级照样渲染得出来，
     // 只有行内标记会全部退化成纯文本——只渲染一次、不查解析结果是看不出来的
-    const parse = (
-        (await import(pathToFileURL(bundle).href)) as {
-            parseMarkdown: (
-                source: string
-            ) => Array<{ kind: string; text?: string; children?: unknown[] }>;
-        }
-    ).parseMarkdown;
+    const parse = ((await import(pathToFileURL(bundle).href)) as Bundle).parseMarkdown;
     const inlineKinds = (source: string): string[] =>
         (parse(source)[0].children ?? []).map((node) => (node as { kind: string }).kind);
     check(

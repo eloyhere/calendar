@@ -216,11 +216,23 @@ TABLES: list[Table] = [
         comment="朔望年。源表列 B 的纪年块，一年 12 或 13 个朔望月。",
         columns=[
             Column("identity", "bigint", "自增主键，由数据库生成"),
-            _relative("年内月数：12 或 13"),
+            _relative("本朔望年在本库里的序号，按时间升序从 1 起（首个纪年块为 1）"),
             Column("gregorian_year", "bigint", "纪年块标签，即纪年，可与 proleptic 格里高利历年不同"),
+            Column("lengthOfMonth", "bigint", "长度，月（向 0 取整）：12 或 13"),
+            Column("lengthOfPhenology", "bigint", "长度，候（向 0 取整）"),
+            Column("lengthOfWeek", "bigint", "长度，周（向 0 取整）"),
+            Column("lengthOfPart", "bigint", "长度，旬（向 0 取整）"),
+            Column("lengthOfDay", "bigint", "长度，天（向 0 取整）"),
+            Column("leap", "boolean", "是否闰年：含 13 个朔望月即为闰年"),
             *_span(),
         ],
         indexes=[("gregorian_year", ["gregorian_year"])],
+        note="一年 12 或 13 个朔望月。lengthOfMonth 记该年实际有多少个朔望月（朔望月 29/30 天"
+             "不等长，只能数）；lengthOfPhenology / lengthOfWeek / lengthOfPart / lengthOfDay "
+             "是候（5 天）/ 周（7 天）/ 旬（10 天）/ 天这四个**固定长度**单位，按"
+             "「本区间含多少个该单位，向 0 取整」= 区间秒数 // 单位秒数，"
+             "与七部派生历法的年表逐字同口径。`chronology.lengthOfSynodicMonth` "
+             "与该行的 lengthOfMonth 同值。",
     ),
     Table(
         name="synodic_month",
@@ -419,8 +431,10 @@ TABLES: list[Table] = [
             ("natural", ["natural"]),
             ("synodic", ["synodic"]),
         ],
-        note="八部历法的年都取「包含本纪年区间」的那一年（各历法的年平铺整条时间轴，"
-             "故对应唯一）；`lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值。",
+        note="八部历法的年各取「**纪年首所在**」的那一年 —— 一个朔望年约 354 天，"
+             "可能跨历法年（例如跨格里高利历的元旦），故以纪年的 start 定归属，"
+             "与 `calendar.xlsx` 的纪年块标签取「块首所在年份」同一口径。"
+             "`lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值。",
     ),
 ]
 

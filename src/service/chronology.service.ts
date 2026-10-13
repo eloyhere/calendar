@@ -3,9 +3,10 @@ import type { EntityRepository, Page } from "./service";
 import { AbstractService } from "./service";
 
 /**
- * 纪年 service（表 chronology）。
- * calendar.xlsx 不含纪年数据，表建而未填（docs/design.md §3）。
- * 实体声明了 8 种纪年，但表里只有 synodic 一种，列名以 src/sql/chronology.sql 为准。
+ * 纪年 service（表 chronology，23,500 行）。
+ * 一个朔望年一条，与八部历法的年表一一对应：八列年各取「纪年首所在」的那一年，
+ * 八列 lengthOf<X>Month 是那一年的月数（docs/design.md §3）。
+ * 列名以 src/sql/chronology.sql 为准。
  */
 export class ChronologyService extends AbstractService<bigint, Chronology> {
     /** 注入纪年 repository。 */

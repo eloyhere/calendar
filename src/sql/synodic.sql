@@ -25,11 +25,23 @@ WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1);
@@ -45,28 +57,52 @@ WHERE 1 = 1
         AND ((:identity IS NULL OR "identity" = :identity)
         AND (:relative IS NULL OR "relative" = :relative)
         AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+        AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+        AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+        AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+        AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+        AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+        AND (:leap IS NULL OR "leap" = :leap)
         AND (:start IS NULL OR "start" = :start)
         AND (:end IS NULL OR "end" = :end))
         AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
         AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
         AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+        AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+        AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+        AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+        AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+        AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+        AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
         AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
         AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
         AND (1 = 1)
 ) AS exists_;
 
 -- name: findAll
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1)
@@ -76,12 +112,24 @@ ORDER BY
     (CASE WHEN :sortDirection = 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) DESC NULLS LAST,
     (CASE WHEN :sortDirection IS NULL OR :sortDirection <> 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) ASC NULLS LAST,
@@ -90,28 +138,40 @@ LIMIT :limit OFFSET :offset;
 
 -- name: findAllByIdentities
 -- :identities 为 JSON 数组文本，例如 [1,2,3]；按 identity 升序返回。
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE "identity" IN (SELECT value FROM json_each(:identities))
 ORDER BY "identity" ASC;
 
 -- name: findByIdentity
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE "identity" = :identity;
 
 -- name: findBy
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1)
@@ -121,12 +181,24 @@ ORDER BY
     (CASE WHEN :sortDirection = 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) DESC NULLS LAST,
     (CASE WHEN :sortDirection IS NULL OR :sortDirection <> 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) ASC NULLS LAST,
@@ -134,17 +206,29 @@ ORDER BY
 LIMIT :limit OFFSET :offset;
 
 -- name: findFirstBy
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1)
@@ -154,12 +238,24 @@ ORDER BY
     (CASE WHEN :sortDirection = 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) DESC NULLS LAST,
     (CASE WHEN :sortDirection IS NULL OR :sortDirection <> 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) ASC NULLS LAST,
@@ -167,17 +263,29 @@ ORDER BY
 LIMIT 1;
 
 -- name: findOne
-SELECT "identity", "relative", "gregorian_year", "start", "end"
+SELECT "identity", "relative", "gregorian_year", "lengthOfMonth", "lengthOfPhenology", "lengthOfWeek", "lengthOfPart", "lengthOfDay", "leap", "start", "end"
 FROM "synodic_calendar_year"
 WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1)
@@ -198,11 +306,23 @@ WHERE 1 = 1
     AND ((:identity IS NULL OR "identity" = :identity)
     AND (:relative IS NULL OR "relative" = :relative)
     AND (:gregorian_year IS NULL OR "gregorian_year" = :gregorian_year)
+    AND (:lengthOfMonth IS NULL OR "lengthOfMonth" = :lengthOfMonth)
+    AND (:lengthOfPhenology IS NULL OR "lengthOfPhenology" = :lengthOfPhenology)
+    AND (:lengthOfWeek IS NULL OR "lengthOfWeek" = :lengthOfWeek)
+    AND (:lengthOfPart IS NULL OR "lengthOfPart" = :lengthOfPart)
+    AND (:lengthOfDay IS NULL OR "lengthOfDay" = :lengthOfDay)
+    AND (:leap IS NULL OR "leap" = :leap)
     AND (:start IS NULL OR "start" = :start)
     AND (:end IS NULL OR "end" = :end))
     AND ((:identityStart IS NULL OR :identityEnd IS NULL OR ("identity" >= :identityStart AND "identity" < :identityEnd))
     AND (:relativeStart IS NULL OR :relativeEnd IS NULL OR ("relative" >= :relativeStart AND "relative" < :relativeEnd))
     AND (:gregorian_yearStart IS NULL OR :gregorian_yearEnd IS NULL OR ("gregorian_year" >= :gregorian_yearStart AND "gregorian_year" < :gregorian_yearEnd))
+    AND (:lengthOfMonthStart IS NULL OR :lengthOfMonthEnd IS NULL OR ("lengthOfMonth" >= :lengthOfMonthStart AND "lengthOfMonth" < :lengthOfMonthEnd))
+    AND (:lengthOfPhenologyStart IS NULL OR :lengthOfPhenologyEnd IS NULL OR ("lengthOfPhenology" >= :lengthOfPhenologyStart AND "lengthOfPhenology" < :lengthOfPhenologyEnd))
+    AND (:lengthOfWeekStart IS NULL OR :lengthOfWeekEnd IS NULL OR ("lengthOfWeek" >= :lengthOfWeekStart AND "lengthOfWeek" < :lengthOfWeekEnd))
+    AND (:lengthOfPartStart IS NULL OR :lengthOfPartEnd IS NULL OR ("lengthOfPart" >= :lengthOfPartStart AND "lengthOfPart" < :lengthOfPartEnd))
+    AND (:lengthOfDayStart IS NULL OR :lengthOfDayEnd IS NULL OR ("lengthOfDay" >= :lengthOfDayStart AND "lengthOfDay" < :lengthOfDayEnd))
+    AND (:leapStart IS NULL OR :leapEnd IS NULL OR ("leap" >= :leapStart AND "leap" < :leapEnd))
     AND (:startStart IS NULL OR :startEnd IS NULL OR ("start" >= :startStart AND "start" < :startEnd))
     AND (:endStart IS NULL OR :endEnd IS NULL OR ("end" >= :endStart AND "end" < :endEnd)))
     AND (1 = 1)
@@ -212,12 +332,24 @@ ORDER BY
     (CASE WHEN :sortDirection = 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) DESC NULLS LAST,
     (CASE WHEN :sortDirection IS NULL OR :sortDirection <> 'DESC' THEN (CASE
         WHEN :sortColumn = 'relative' THEN "relative"
         WHEN :sortColumn = 'gregorian_year' THEN "gregorian_year"
+        WHEN :sortColumn = 'lengthOfMonth' THEN "lengthOfMonth"
+        WHEN :sortColumn = 'lengthOfPhenology' THEN "lengthOfPhenology"
+        WHEN :sortColumn = 'lengthOfWeek' THEN "lengthOfWeek"
+        WHEN :sortColumn = 'lengthOfPart' THEN "lengthOfPart"
+        WHEN :sortColumn = 'lengthOfDay' THEN "lengthOfDay"
+        WHEN :sortColumn = 'leap' THEN "leap"
         WHEN :sortColumn = 'start' THEN "start"
         WHEN :sortColumn = 'end' THEN "end"
         ELSE "identity" END) END) ASC NULLS LAST,

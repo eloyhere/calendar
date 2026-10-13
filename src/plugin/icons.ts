@@ -107,7 +107,41 @@ export const ICON_NAMES = [
     "Warning",
     "InfoFilled",
     "QuestionFilled",
-    "Aim"
+    "Aim",
+
+    // ── 二级面板、页头与页内动作 ────────────────────────────────────────────
+    // 面板的收起 / 固定、日历的时间跳转（前一天 / 后一天 / 今天）、
+    // 排盘动作（重新起盘 / 复制 / 收藏）。名字都在 @element-plus/icons-vue 里。
+    "ArrowDown",
+    "ArrowUp",
+    "Back",
+    "Right",
+    "CaretTop",
+    "CaretBottom",
+    "DArrowLeft",
+    "Position",
+    "RefreshLeft",
+    "RefreshRight",
+    "FullScreen",
+    "StarFilled",
+    "Select",
+    "CirclePlus",
+    "CircleClose",
+    "SwitchButton",
+    "SetUp",
+    "Menu",
+    "Tickets",
+    "Postcard",
+    "Stamp",
+    "Medal",
+    "Trophy",
+    "Sunrise",
+    "Sunset",
+    "Cloudy",
+    "Lightning",
+    "Pouring",
+    "WindPower",
+    "ScaleToOriginal"
 ] as const;
 
 /** 图标名联合类型；`meta.icon` 只能取这里的字面量。 */

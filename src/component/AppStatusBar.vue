@@ -95,13 +95,14 @@ const flowText = computed(() => {
 .app-statusbar {
     align-items: center;
     background: var(--el-bg-color);
-    border-top: 1px solid var(--el-border-color-lighter);
+    border-top: 1px solid var(--xy-hairline);
     color: var(--el-text-color-secondary);
     display: flex;
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: var(--xy-font-xs);
     gap: 6px;
-    height: 28px;
+    height: var(--xy-statusbar-height);
+    padding: 0 12px;
     /* 整条不可选中：它是状态，不是内容 */
     user-select: none;
 }

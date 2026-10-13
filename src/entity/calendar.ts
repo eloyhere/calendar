@@ -71,7 +71,7 @@ export interface CalendarSystem {
  * 八套历法。
  *
  * 顺序即菜单顺序（使用频率：朔望历有 29 万行真实历表，其次是现代参照系格里高利历，
- * 再是节气表，其余五套收进"更多历法"）。
+ * 再是节气历，其余五套收进"更多历法"）。
  */
 export const CalendarSystems: readonly CalendarSystem[] = [
     {
@@ -102,7 +102,7 @@ export const CalendarSystems: readonly CalendarSystem[] = [
     },
     {
         id: "climate",
-        label: "节气表",
+        label: "节气历",
         icon: "Clock",
         description: "以节气定年月；五天一气候，一年二十四气",
         module: "climate",
@@ -130,13 +130,13 @@ export const CalendarSystems: readonly CalendarSystem[] = [
         id: "jupiter",
         label: "木星历",
         icon: "Opportunity",
-        description: "以木星视运动定年月，岁星纪年的依据",
+        description: "以木星公转一周为一年，十二等分",
         module: "jupiter",
         yearTable: "jupiter_year",
         monthTable: "jupiter_month",
         rows: 1_982,
         monthsPerYear: "12 个月",
-        yearStart: "木星与太阳同度",
+        yearStart: "建元处的木星黄经（公转周期 4332 天）",
         inMenu: false
     },
     {

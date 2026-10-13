@@ -16,7 +16,7 @@ python scripts/generate_table_doc.py
 
 表分两类：**实体表**（一张表对应一个 entity 接口）与**关联表**（entity 里复数命名的属性，见 §3）。
 
-生成时间：2026-10-13 10:46。
+生成时间：2026-10-13 13:31。
 
 ## 1. 列的含义
 
@@ -52,28 +52,28 @@ python scripts/generate_table_doc.py
 
 | 数据库 | 模块 | 实体表 | 关联表 | 行数 | 建库时间 |
 | --- | --- | --- | --- | --- | --- |
-| astronomy.calendar.sqlite | `astronomy.calendar` | `astronomy_year`、`astronomy_month` | `astronomy_month_parts`、`astronomy_month_phenologies`、`astronomy_month_weeks`、`astronomy_year_months`、`astronomy_year_parts`、`astronomy_year_phenologies`、`astronomy_year_weeks` | 6,670,760 | 2026-10-13 10:36:45 |
-| chronology.sqlite | `chronology` | `chronology` | — | 23,500 | 2026-10-13 10:33:43 |
-| climate.sqlite | `climate` | `climate`、`climate_year`、`climate_month` | `climate_month_parts`、`climate_month_phenologies`、`climate_month_weeks`、`climate_parts`、`climate_weeks`、`climate_year_months`、`climate_year_parts`、`climate_year_phenologies`、`climate_year_weeks` | 14,500,342 | 2026-10-13 10:35:38 |
-| dynasty.sqlite | `dynasty` | `dynasty` | `dynasty_chronologies`、`dynasty_eras` | 38,647 | 2026-10-13 10:36:10 |
-| encounter.sqlite | `encounter` | `encounter` | `encounter_performs` | 69 | 2026-10-13 10:36:09 |
-| epoch.sqlite | `epoch` | `epoch` | `epoch_chronologies` | 24,284 | 2026-10-13 10:36:09 |
-| era.sqlite | `era` | `era` | `era_chronologies` | 2,109,111 | 2026-10-13 10:36:16 |
-| event.sqlite | `event` | `event` | — | 2,379 | 2026-10-13 10:33:43 |
-| gregory.calendar.sqlite | `gregory.calendar` | `gregory_year`、`gregory_month` | `gregory_month_parts`、`gregory_month_phenologies`、`gregory_month_weeks`、`gregory_year_months`、`gregory_year_parts`、`gregory_year_phenologies`、`gregory_year_weeks` | 7,276,334 | 2026-10-13 10:37:19 |
-| jupiter.calendar.sqlite | `jupiter.calendar` | `jupiter_year`、`jupiter_month` | `jupiter_month_parts`、`jupiter_month_phenologies`、`jupiter_month_weeks`、`jupiter_year_months`、`jupiter_year_parts`、`jupiter_year_phenologies`、`jupiter_year_weeks` | 5,904,734 | 2026-10-13 10:37:49 |
-| natural.calendar.sqlite | `natural.calendar` | `natural_year`、`natural_month` | `natural_month_parts`、`natural_month_phenologies`、`natural_month_weeks`、`natural_year_months`、`natural_year_parts`、`natural_year_phenologies`、`natural_year_weeks` | 6,652,001 | 2026-10-13 10:38:22 |
-| part.sqlite | `part` | `part` | — | 871,962 | 2026-10-13 10:33:36 |
-| perform.sqlite | `perform` | `perform` | `perform_epoches` | 850 | 2026-10-13 10:36:09 |
-| person.sqlite | `person` | `person` | — | 425 | 2026-10-13 10:33:43 |
-| phase.sqlite | `phase` | `phase` | `phase_parts`、`phase_weeks` | 7,203,280 | 2026-10-13 10:36:06 |
-| phenology.sqlite | `phenology` | `phenology` | — | 564,000 | 2026-10-13 10:33:03 |
-| primary.sqlite | `primary` | `primary` | `primary_performs` | 68 | 2026-10-13 10:36:09 |
-| synodic.sqlite | `synodic` | `synodic_calendar_year`、`synodic_month` | `synodic_calendar_year_months`、`synodic_calendar_year_parts`、`synodic_calendar_year_phenologies`、`synodic_calendar_year_weeks`、`synodic_month_parts`、`synodic_month_phenologies`、`synodic_month_weeks` | 6,652,001 | 2026-10-13 10:34:35 |
-| temporal.sqlite | `temporal` | `temporal` | — | 10,734,114 | 2026-10-13 10:32:50 |
-| tree.calendar.sqlite | `tree.calendar` | `tree_year`、`tree_month` | `tree_month_parts`、`tree_month_phenologies`、`tree_month_weeks`、`tree_year_months`、`tree_year_parts`、`tree_year_phenologies`、`tree_year_weeks` | 6,974,610 | 2026-10-13 10:38:55 |
-| tropical.calendar.sqlite | `tropical.calendar` | `tropical_year`、`tropical_month` | `tropical_month_parts`、`tropical_month_phenologies`、`tropical_month_weeks`、`tropical_year_months`、`tropical_year_parts`、`tropical_year_phenologies`、`tropical_year_weeks` | 7,277,341 | 2026-10-13 10:39:31 |
-| week.sqlite | `week` | `week` | — | 1,453,271 | 2026-10-13 10:33:42 |
+| astronomy.calendar.sqlite | `astronomy.calendar` | `astronomy_year`、`astronomy_month` | `astronomy_month_parts`、`astronomy_month_phenologies`、`astronomy_month_weeks`、`astronomy_year_months`、`astronomy_year_parts`、`astronomy_year_phenologies`、`astronomy_year_weeks` | 6,670,760 | 2026-10-13 12:41:00 |
+| chronology.sqlite | `chronology` | `chronology` | — | 23,500 | 2026-10-13 12:38:27 |
+| climate.sqlite | `climate` | `climate`、`climate_year`、`climate_month` | `climate_month_parts`、`climate_month_phenologies`、`climate_month_weeks`、`climate_parts`、`climate_weeks`、`climate_year_months`、`climate_year_parts`、`climate_year_phenologies`、`climate_year_weeks` | 14,500,342 | 2026-10-13 12:39:56 |
+| dynasty.sqlite | `dynasty` | `dynasty` | `dynasty_chronologies`、`dynasty_eras` | 38,647 | 2026-10-13 12:40:25 |
+| encounter.sqlite | `encounter` | `encounter` | `encounter_performs` | 69 | 2026-10-13 12:40:25 |
+| epoch.sqlite | `epoch` | `epoch` | `epoch_chronologies` | 24,284 | 2026-10-13 12:40:25 |
+| era.sqlite | `era` | `era` | `era_chronologies` | 2,109,111 | 2026-10-13 12:40:31 |
+| event.sqlite | `event` | `event` | — | 2,379 | 2026-10-13 12:38:00 |
+| gregory.calendar.sqlite | `gregory.calendar` | `gregory_year`、`gregory_month` | `gregory_month_parts`、`gregory_month_phenologies`、`gregory_month_weeks`、`gregory_year_months`、`gregory_year_parts`、`gregory_year_phenologies`、`gregory_year_weeks` | 7,276,334 | 2026-10-13 12:41:32 |
+| jupiter.calendar.sqlite | `jupiter.calendar` | `jupiter_year`、`jupiter_month` | `jupiter_month_parts`、`jupiter_month_phenologies`、`jupiter_month_weeks`、`jupiter_year_months`、`jupiter_year_parts`、`jupiter_year_phenologies`、`jupiter_year_weeks` | 5,904,734 | 2026-10-13 12:42:04 |
+| natural.calendar.sqlite | `natural.calendar` | `natural_year`、`natural_month` | `natural_month_parts`、`natural_month_phenologies`、`natural_month_weeks`、`natural_year_months`、`natural_year_parts`、`natural_year_phenologies`、`natural_year_weeks` | 6,652,001 | 2026-10-13 12:42:35 |
+| part.sqlite | `part` | `part` | — | 871,962 | 2026-10-13 12:37:54 |
+| perform.sqlite | `perform` | `perform` | `perform_epoches` | 850 | 2026-10-13 12:40:25 |
+| person.sqlite | `person` | `person` | — | 425 | 2026-10-13 12:38:00 |
+| phase.sqlite | `phase` | `phase` | `phase_parts`、`phase_weeks` | 7,203,280 | 2026-10-13 12:40:22 |
+| phenology.sqlite | `phenology` | `phenology` | — | 564,000 | 2026-10-13 12:37:25 |
+| primary.sqlite | `primary` | `primary` | `primary_performs` | 68 | 2026-10-13 12:40:25 |
+| synodic.sqlite | `synodic` | `synodic_calendar_year`、`synodic_month` | `synodic_calendar_year_months`、`synodic_calendar_year_parts`、`synodic_calendar_year_phenologies`、`synodic_calendar_year_weeks`、`synodic_month_parts`、`synodic_month_phenologies`、`synodic_month_weeks` | 6,652,001 | 2026-10-13 13:28:28 |
+| temporal.sqlite | `temporal` | `temporal` | — | 10,734,114 | 2026-10-13 12:37:13 |
+| tree.calendar.sqlite | `tree.calendar` | `tree_year`、`tree_month` | `tree_month_parts`、`tree_month_phenologies`、`tree_month_weeks`、`tree_year_months`、`tree_year_parts`、`tree_year_phenologies`、`tree_year_weeks` | 6,974,610 | 2026-10-13 12:43:09 |
+| tropical.calendar.sqlite | `tropical.calendar` | `tropical_year`、`tropical_month` | `tropical_month_parts`、`tropical_month_phenologies`、`tropical_month_weeks`、`tropical_year_months`、`tropical_year_parts`、`tropical_year_phenologies`、`tropical_year_weeks` | 7,277,341 | 2026-10-13 12:43:44 |
+| week.sqlite | `week` | `week` | — | 1,453,271 | 2026-10-13 12:38:00 |
 | **合计** | 22 个库 | 31 张 | 67 张 | 84,934,083 | — |
 
 ## 3. 关系表（entity 的复数属性 → ManyToMany）
@@ -156,7 +156,7 @@ python scripts/generate_table_doc.py
 
 ### astronomy.calendar.sqlite
 
-模块 `astronomy.calendar` · 建库 2026-10-13 10:36:45 · 9 张表 · 6,670,760 行
+模块 `astronomy.calendar` · 建库 2026-10-13 12:41:00 · 9 张表 · 6,670,760 行
 
 表：`astronomy_year`、`astronomy_month`、`astronomy_year_months`、`astronomy_year_phenologies`、`astronomy_year_weeks`、`astronomy_year_parts`、`astronomy_month_phenologies`、`astronomy_month_weeks`、`astronomy_month_parts`
 
@@ -294,7 +294,7 @@ python scripts/generate_table_doc.py
 
 ### chronology.sqlite
 
-模块 `chronology` · 建库 2026-10-13 10:33:43 · 1 张表 · 23,500 行
+模块 `chronology` · 建库 2026-10-13 12:38:27 · 1 张表 · 23,500 行
 
 表：`chronology`
 
@@ -305,20 +305,34 @@ python scripts/generate_table_doc.py
 |identity|integer|yes|yes|NA|NA|自增主键，由数据库生成，与业务时间无关|
 |relative|integer|no|no|no|no|本纪年在所属世内的序号 1-30|
 |absolute|integer|no|no|no|no|全局纪年序号，按时间升序|
-|epoch|integer|no|no|no|no|所属世|
-|synodic|integer|no|no|no|no|对应朔望年|
-|lengthOfSynodicMonth|integer|no|no|no|no|该纪年朔望月的月数|
+|epoch|integer|no|no|yes|yes|所属世|
+|astronomy|integer|no|no|yes|yes|天文纪年的年|
+|lengthOfAstronomyMonth|integer|no|no|no|no|天文纪年该年的月数|
+|climate|integer|no|no|no|no|节气纪年的年|
+|lengthOfClimateMonth|integer|no|no|no|no|节气纪年该年的月数，24|
+|gregory|integer|no|no|yes|yes|格里高利历的年|
+|lengthOfGregoryMonth|integer|no|no|no|no|格里高利历该年的月数，12|
+|jupiter|integer|no|no|no|no|木星历法的年|
+|lengthOfJupiterMonth|integer|no|no|no|no|木星历法该年的月数，12|
+|natural|integer|no|no|yes|yes|轩辕纪年的年|
+|lengthOfNaturalMonth|integer|no|no|no|no|轩辕纪年该年的月数|
+|tree|integer|no|no|no|no|干支年的年|
+|lengthOfTreeMonth|integer|no|no|no|no|干支年该年的月数，12|
+|tropical|integer|no|no|no|no|回归年的年|
+|lengthOfTropicalMonth|integer|no|no|no|no|回归年该年的月数，12|
+|synodic|integer|no|no|yes|yes|对应朔望年|
+|lengthOfSynodicMonth|integer|no|no|no|no|该纪年朔望月的月数，12 或 13|
 |start|integer|no|no|no|no|区间起点，闭区间|
 |end|integer|no|no|no|no|区间终点，闭区间，等于下一区间起点 - 1|
 
-表说明：纪年。一个朔望年一条，按 entity 的 `epoch` 归属到世。
-索引：无
-引用（SQLite 不施加外键约束，仅记录指向）：`epoch` → `epoch.identity`；`synodic` → `synodic_calendar_year.identity`；`start` → `temporal.identity`；`end` → `temporal.identity`
-备注：entity `Chronology` 另声明了其余七部历法的年份与月数，表结构只落地 synodic（见 src/service/chronology.service.ts）；需要跨历法对照时按时间区间 JOIN 同名分库。
+表说明：纪年。一个朔望年一条，与八部历法的年表一一对应。
+索引：`idx_chronology_synodic`(synodic)、`idx_chronology_natural`(natural)、`idx_chronology_gregory`(gregory)、`idx_chronology_astronomy`(astronomy)、`idx_chronology_epoch`(epoch)
+引用（SQLite 不施加外键约束，仅记录指向）：`epoch` → `epoch.identity`；`astronomy` → `astronomy_year.identity`；`climate` → `climate_year.identity`；`gregory` → `gregory_year.identity`；`jupiter` → `jupiter_year.identity`；`natural` → `natural_year.identity`；`tree` → `tree_year.identity`；`tropical` → `tropical_year.identity`；`synodic` → `synodic_calendar_year.identity`；`start` → `temporal.identity`；`end` → `temporal.identity`
+备注：八部历法的年各取「**纪年首所在**」的那一年 —— 一个朔望年约 354 天，可能跨历法年（例如跨格里高利历的元旦），故以纪年的 start 定归属，与 `calendar.xlsx` 的纪年块标签取「块首所在年份」同一口径。`lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值。
 
 ### climate.sqlite
 
-模块 `climate` · 建库 2026-10-13 10:35:38 · 12 张表 · 14,500,342 行
+模块 `climate` · 建库 2026-10-13 12:39:56 · 12 张表 · 14,500,342 行
 
 表：`climate`、`climate_year`、`climate_month`、`climate_year_months`、`climate_year_phenologies`、`climate_year_weeks`、`climate_year_parts`、`climate_month_phenologies`、`climate_month_weeks`、`climate_month_parts`、`climate_weeks`、`climate_parts`
 
@@ -503,7 +517,7 @@ python scripts/generate_table_doc.py
 
 ### dynasty.sqlite
 
-模块 `dynasty` · 建库 2026-10-13 10:36:10 · 3 张表 · 38,647 行
+模块 `dynasty` · 建库 2026-10-13 12:40:25 · 3 张表 · 38,647 行
 
 表：`dynasty`、`dynasty_eras`、`dynasty_chronologies`
 
@@ -554,7 +568,7 @@ python scripts/generate_table_doc.py
 
 ### encounter.sqlite
 
-模块 `encounter` · 建库 2026-10-13 10:36:09 · 2 张表 · 69 行
+模块 `encounter` · 建库 2026-10-13 12:40:25 · 2 张表 · 69 行
 
 表：`encounter`、`encounter_performs`
 
@@ -588,7 +602,7 @@ python scripts/generate_table_doc.py
 
 ### epoch.sqlite
 
-模块 `epoch` · 建库 2026-10-13 10:36:09 · 2 张表 · 24,284 行
+模块 `epoch` · 建库 2026-10-13 12:40:25 · 2 张表 · 24,284 行
 
 表：`epoch`、`epoch_chronologies`
 
@@ -623,7 +637,7 @@ python scripts/generate_table_doc.py
 
 ### era.sqlite
 
-模块 `era` · 建库 2026-10-13 10:36:16 · 2 张表 · 2,109,111 行
+模块 `era` · 建库 2026-10-13 12:40:31 · 2 张表 · 2,109,111 行
 
 表：`era`、`era_chronologies`
 
@@ -665,7 +679,7 @@ python scripts/generate_table_doc.py
 
 ### event.sqlite
 
-模块 `event` · 建库 2026-10-13 10:33:43 · 1 张表 · 2,379 行
+模块 `event` · 建库 2026-10-13 12:38:00 · 1 张表 · 2,379 行
 
 表：`event`
 
@@ -696,7 +710,7 @@ python scripts/generate_table_doc.py
 
 ### gregory.calendar.sqlite
 
-模块 `gregory.calendar` · 建库 2026-10-13 10:37:19 · 9 张表 · 7,276,334 行
+模块 `gregory.calendar` · 建库 2026-10-13 12:41:32 · 9 张表 · 7,276,334 行
 
 表：`gregory_year`、`gregory_month`、`gregory_year_months`、`gregory_year_phenologies`、`gregory_year_weeks`、`gregory_year_parts`、`gregory_month_phenologies`、`gregory_month_weeks`、`gregory_month_parts`
 
@@ -834,7 +848,7 @@ python scripts/generate_table_doc.py
 
 ### jupiter.calendar.sqlite
 
-模块 `jupiter.calendar` · 建库 2026-10-13 10:37:49 · 9 张表 · 5,904,734 行
+模块 `jupiter.calendar` · 建库 2026-10-13 12:42:04 · 9 张表 · 5,904,734 行
 
 表：`jupiter_year`、`jupiter_month`、`jupiter_year_months`、`jupiter_year_phenologies`、`jupiter_year_weeks`、`jupiter_year_parts`、`jupiter_month_phenologies`、`jupiter_month_weeks`、`jupiter_month_parts`
 
@@ -972,7 +986,7 @@ python scripts/generate_table_doc.py
 
 ### natural.calendar.sqlite
 
-模块 `natural.calendar` · 建库 2026-10-13 10:38:22 · 9 张表 · 6,652,001 行
+模块 `natural.calendar` · 建库 2026-10-13 12:42:35 · 9 张表 · 6,652,001 行
 
 表：`natural_year`、`natural_month`、`natural_year_months`、`natural_year_phenologies`、`natural_year_weeks`、`natural_year_parts`、`natural_month_phenologies`、`natural_month_weeks`、`natural_month_parts`
 
@@ -1110,7 +1124,7 @@ python scripts/generate_table_doc.py
 
 ### part.sqlite
 
-模块 `part` · 建库 2026-10-13 10:33:36 · 1 张表 · 871,962 行
+模块 `part` · 建库 2026-10-13 12:37:54 · 1 张表 · 871,962 行
 
 表：`part`
 
@@ -1131,7 +1145,7 @@ python scripts/generate_table_doc.py
 
 ### perform.sqlite
 
-模块 `perform` · 建库 2026-10-13 10:36:09 · 2 张表 · 850 行
+模块 `perform` · 建库 2026-10-13 12:40:25 · 2 张表 · 850 行
 
 表：`perform`、`perform_epoches`
 
@@ -1165,7 +1179,7 @@ python scripts/generate_table_doc.py
 
 ### person.sqlite
 
-模块 `person` · 建库 2026-10-13 10:33:43 · 1 张表 · 425 行
+模块 `person` · 建库 2026-10-13 12:38:00 · 1 张表 · 425 行
 
 表：`person`
 
@@ -1189,7 +1203,7 @@ python scripts/generate_table_doc.py
 
 ### phase.sqlite
 
-模块 `phase` · 建库 2026-10-13 10:36:06 · 3 张表 · 7,203,280 行
+模块 `phase` · 建库 2026-10-13 12:40:22 · 3 张表 · 7,203,280 行
 
 表：`phase`、`phase_weeks`、`phase_parts`
 
@@ -1242,7 +1256,7 @@ python scripts/generate_table_doc.py
 
 ### phenology.sqlite
 
-模块 `phenology` · 建库 2026-10-13 10:33:03 · 1 张表 · 564,000 行
+模块 `phenology` · 建库 2026-10-13 12:37:25 · 1 张表 · 564,000 行
 
 表：`phenology`
 
@@ -1266,7 +1280,7 @@ python scripts/generate_table_doc.py
 
 ### primary.sqlite
 
-模块 `primary` · 建库 2026-10-13 10:36:09 · 2 张表 · 68 行
+模块 `primary` · 建库 2026-10-13 12:40:25 · 2 张表 · 68 行
 
 表：`primary`、`primary_performs`
 
@@ -1300,7 +1314,7 @@ python scripts/generate_table_doc.py
 
 ### synodic.sqlite
 
-模块 `synodic` · 建库 2026-10-13 10:34:35 · 9 张表 · 6,652,001 行
+模块 `synodic` · 建库 2026-10-13 13:28:28 · 9 张表 · 6,652,001 行
 
 表：`synodic_calendar_year`、`synodic_month`、`synodic_calendar_year_months`、`synodic_calendar_year_phenologies`、`synodic_calendar_year_weeks`、`synodic_calendar_year_parts`、`synodic_month_phenologies`、`synodic_month_weeks`、`synodic_month_parts`
 
@@ -1309,14 +1323,21 @@ python scripts/generate_table_doc.py
 |name|type|primary key|auto increment|key|index|comment|
 |---|---|---|---|---|---|---|
 |identity|integer|yes|yes|NA|NA|自增主键，由数据库生成|
-|relative|integer|no|no|no|no|年内月数：12 或 13|
+|relative|integer|no|no|no|no|本朔望年在本库里的序号，按时间升序从 1 起（首个纪年块为 1）|
 |gregorian_year|integer|no|no|yes|yes|纪年块标签，即纪年，可与 proleptic 格里高利历年不同|
+|lengthOfMonth|integer|no|no|no|no|长度，月（向 0 取整）：12 或 13|
+|lengthOfPhenology|integer|no|no|no|no|长度，候（向 0 取整）|
+|lengthOfWeek|integer|no|no|no|no|长度，周（向 0 取整）|
+|lengthOfPart|integer|no|no|no|no|长度，旬（向 0 取整）|
+|lengthOfDay|integer|no|no|no|no|长度，天（向 0 取整）|
+|leap|integer|no|no|no|no|是否闰年：含 13 个朔望月即为闰年|
 |start|integer|no|no|no|no|区间起点，闭区间|
 |end|integer|no|no|no|no|区间终点，闭区间，等于下一区间起点 - 1|
 
 表说明：朔望年。源表列 B 的纪年块，一年 12 或 13 个朔望月。
 索引：`idx_synodic_calendar_year_gregorian_year`(gregorian_year)
 引用（SQLite 不施加外键约束，仅记录指向）：`start` → `temporal.identity`；`end` → `temporal.identity`
+备注：一年 12 或 13 个朔望月。lengthOfMonth 记该年实际有多少个朔望月（朔望月 29/30 天不等长，只能数）；lengthOfPhenology / lengthOfWeek / lengthOfPart / lengthOfDay 是候（5 天）/ 周（7 天）/ 旬（10 天）/ 天这四个**固定长度**单位，按「本区间含多少个该单位，向 0 取整」= 区间秒数 // 单位秒数，与七部派生历法的年表逐字同口径。`chronology.lengthOfSynodicMonth` 与该行的 lengthOfMonth 同值。
 
 - synodic_month
 
@@ -1434,7 +1455,7 @@ python scripts/generate_table_doc.py
 
 ### temporal.sqlite
 
-模块 `temporal` · 建库 2026-10-13 10:32:50 · 1 张表 · 10,734,114 行
+模块 `temporal` · 建库 2026-10-13 12:37:13 · 1 张表 · 10,734,114 行
 
 表：`temporal`
 
@@ -1459,7 +1480,7 @@ python scripts/generate_table_doc.py
 
 ### tree.calendar.sqlite
 
-模块 `tree.calendar` · 建库 2026-10-13 10:38:55 · 9 张表 · 6,974,610 行
+模块 `tree.calendar` · 建库 2026-10-13 12:43:09 · 9 张表 · 6,974,610 行
 
 表：`tree_year`、`tree_month`、`tree_year_months`、`tree_year_phenologies`、`tree_year_weeks`、`tree_year_parts`、`tree_month_phenologies`、`tree_month_weeks`、`tree_month_parts`
 
@@ -1597,7 +1618,7 @@ python scripts/generate_table_doc.py
 
 ### tropical.calendar.sqlite
 
-模块 `tropical.calendar` · 建库 2026-10-13 10:39:31 · 9 张表 · 7,277,341 行
+模块 `tropical.calendar` · 建库 2026-10-13 12:43:44 · 9 张表 · 7,277,341 行
 
 表：`tropical_year`、`tropical_month`、`tropical_year_months`、`tropical_year_phenologies`、`tropical_year_weeks`、`tropical_year_parts`、`tropical_month_phenologies`、`tropical_month_weeks`、`tropical_month_parts`
 
@@ -1735,7 +1756,7 @@ python scripts/generate_table_doc.py
 
 ### week.sqlite
 
-模块 `week` · 建库 2026-10-13 10:33:42 · 1 张表 · 1,453,271 行
+模块 `week` · 建库 2026-10-13 12:38:00 · 1 张表 · 1,453,271 行
 
 表：`week`
 

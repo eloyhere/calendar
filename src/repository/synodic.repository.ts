@@ -543,6 +543,13 @@ export class SynodicRepository implements AsyncRepository<bigint, SynodicMonth> 
         return {
             identity: bigOf(row.identity),
             relative: bigOf(row.relative),
+            gregorian_year: bigOf(row.gregorian_year),
+            lengthOfMonth: bigOf(row.lengthOfMonth),
+            lengthOfPhenology: bigOf(row.lengthOfPhenology),
+            lengthOfWeek: bigOf(row.lengthOfWeek),
+            lengthOfPart: bigOf(row.lengthOfPart),
+            lengthOfDay: bigOf(row.lengthOfDay),
+            leap: booleanOf(row.leap),
             start: bigOf(row.start),
             end: bigOf(row.end)
         } as unknown as SynodicYear;

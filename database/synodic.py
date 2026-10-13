@@ -5,6 +5,11 @@
 这是 `calendar.xlsx` 中唯一直接落库的历法实体：源表一"纪年块"就是一年，
 一行就是一个月。`relative` 即源表列 N 的积月（块内序号），
 `lengthOfDay` 即源表列 C 由公式 `IF(C3="大",30,29)` 决定的大小月天数。
+
+年表的五个 `lengthOf*` 与 `leap` 按 `SynodicYear` 补齐：`lengthOfMonth` 记该年实际有多少个
+朔望月（12 或 13，朔望月长短不一，只能数），其余四个是**固定长度单位**，按
+`docs/table.md` 的口径取「本区间含多少个该单位，向 0 取整」= `区间秒数 // 单位秒数`
+（候 5 天 / 周 7 天 / 旬 10 天 / 天 1 天），与七部派生历法的年表逐字同口径。
 """
 
 from __future__ import annotations
@@ -15,6 +20,12 @@ from typing import Iterator
 from .core import batch_write, iter_rows
 from .schema import Table, by_module, emit_sqlite
 from .source import Workbook
+
+SECONDS_PER_DAY = 86_400
+#: 固定长度单位的秒数：候 5 天、周 7 天、旬 10 天
+SECONDS_PER_PHENOLOGY = 5 * SECONDS_PER_DAY
+SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY
+SECONDS_PER_PART = 10 * SECONDS_PER_DAY
 
 #: 本模块负责的表：年在前、月在后
 TABLES: list[Table] = by_module("synodic")
@@ -42,13 +53,38 @@ def year_rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
     `identity` 是自增主键，这里放该纪年块首个朔月的起始瞬间作占位（写入时由
     `batch_write` 剔除）；`gregorian_year` 是纪年块标签（源表列 B），
     `start`/`end` 是该块的首尾瞬间。
+
+    五个 `lengthOf*` 与 `leap` 按 `src/entity/synodic.ts` 的 `SynodicYear` 补齐：
+
+    - `lengthOfMonth`：该年实际含多少个朔望月（12 或 13）—— 朔望月 29/30 天不等长，
+      只能数，不能整除；
+    - `lengthOfPhenology` / `lengthOfWeek` / `lengthOfPart` / `lengthOfDay`：
+      候 / 周 / 旬 / 天都是**固定长度**单位，按 `docs/table.md` 的口径取
+      「本区间含多少个该单位，向 0 取整」，即 `区间秒数 // 单位秒数`，
+      与七部派生历法的年表同口径（不是关联表的行数 —— 关联表按区间相交算，
+      `phenology` 表存的是节气时刻，一年约 24 条，与 5 天的候不是一回事）；
+    - `leap`：含 13 个朔望月即为闰年。
     """
     grouped = _grouped(workbook)
-    for order, year in enumerate(sorted(grouped), start=1):
-        positions = grouped[year]
+    for order, label in enumerate(sorted(grouped), start=1):
+        positions = grouped[label]
         start = workbook.months[positions[0]].absolute
         end = workbook.month_ends[positions[-1]]
-        yield (start, order, year, start, end)
+        seconds = end - start + 1
+        months = len(positions)
+        yield (
+            start,
+            order,
+            label,
+            months,
+            seconds // SECONDS_PER_PHENOLOGY,
+            seconds // SECONDS_PER_WEEK,
+            seconds // SECONDS_PER_PART,
+            seconds // SECONDS_PER_DAY,
+            months == 13,
+            start,
+            end,
+        )
 
 
 def month_rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:

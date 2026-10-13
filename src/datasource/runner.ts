@@ -22,6 +22,9 @@
  * 得到"表不存在"，而真正的原因（模块名拼错）会被这条报错盖住。
  */
 
+import { toValue } from "vue";
+import type { MaybeRefOrGetter } from "vue";
+
 import { injectRunner } from "../datasource/sqlite";
 import type { Bindings, Row, StatementRunner } from "../datasource/sqlite";
 import { MODULE_BY_NAME } from "../../shared/database-registry";
@@ -148,30 +151,35 @@ export const installCalendarRunner = (): void => {
  * 一条**只为这一页写的**聚合（工作台的"各分库行数占比"、命理页的"某年四柱"）。
  * 为它们各生成一份数据访问层不划算，所以留这个直查口子——它走的是同一条只读通道，
  * 边界（白名单、只读、行数上限）一条不少。
+ *
+ * `module` 接受 `string | Ref<string> | getter`：页面的分库经常是算出来的
+ * （按 `:page` 参数选），传 getter 或 ref 才能跟着参数变化重查。
  */
 export const queryModule = async (
-    module: string,
+    module: MaybeRefOrGetter<string>,
     statement: string,
     parameters?: Bindings
 ): Promise<Row[]> => {
-    assertModule(module);
+    const name = toValue(module);
+    assertModule(name);
     const result = await window.desktop.calendar.select({
-        module,
+        module: name,
         statement,
         parameters: asParameters(parameters)
     });
     return result.rows as Row[];
 };
 
-/** 直查单行。 */
+/** 直查单行。`module` 的取值形式与 `queryModule` 相同。 */
 export const queryModuleOne = async (
-    module: string,
+    module: MaybeRefOrGetter<string>,
     statement: string,
     parameters?: Bindings
 ): Promise<Row | null> => {
-    assertModule(module);
+    const name = toValue(module);
+    assertModule(name);
     return (await window.desktop.calendar.selectOne({
-        module,
+        module: name,
         statement,
         parameters: asParameters(parameters)
     })) as Row | null;
@@ -188,9 +196,10 @@ export const readModuleStates = (): ReturnType<typeof window.desktop.calendar.mo
  * 所以这里传错表名会得到一条明确的拒绝，而不是一条无效 SQL。
  */
 export const readTableColumns = (
-    module: string,
-    table: string
+    module: MaybeRefOrGetter<string>,
+    table: MaybeRefOrGetter<string>
 ): ReturnType<typeof window.desktop.calendar.columns> => {
-    assertModule(module);
-    return window.desktop.calendar.columns({ module, table });
+    const name = toValue(module);
+    assertModule(name);
+    return window.desktop.calendar.columns({ module: name, table: toValue(table) });
 };

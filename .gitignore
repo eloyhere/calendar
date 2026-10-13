@@ -22,3 +22,8 @@ __pycache__/
 
 # 构建缓存
 *.tsbuildinfo
+# 截图验收的暂存目录：capture-log.cjs 与 probe-*.cjs 往这里写 PNG、
+# 日志，以及 Electron 的 userdata。都是产物，不是源码。
+# 真正要留档的验收截图在 docs/shots/（已跟踪）。
+scripts/_shots/
+nav-verify.txt
