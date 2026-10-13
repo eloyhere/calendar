@@ -81,7 +81,7 @@ export function resolveIconComponent(name: string): Component | null {
 import {
     createMemoryHistory,
     createRouter,
-    createWebHistory,
+    createWebHashHistory,
     RouterLink,
     RouterView,
     useRoute,
@@ -92,7 +92,7 @@ import type { RouteRecordRaw, Router as VueRouter, RouterHistory } from "vue-rou
 export {
     createMemoryHistory,
     createRouter,
-    createWebHistory,
+    createWebHashHistory,
     RouterLink,
     RouterView,
     useRoute,
@@ -130,7 +130,7 @@ export function verifyPluginDependencies(): void {
     if (elementPlusIconNames.length === 0) {
         missing.push("@element-plus/icons-vue");
     }
-    if (typeof createRouter !== "function" || typeof createWebHistory !== "function") {
+    if (typeof createRouter !== "function" || typeof createWebHashHistory !== "function") {
         missing.push("vue-router");
     }
 

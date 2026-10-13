@@ -43,11 +43,18 @@ from scripts.database import (
     ordered,
     script_path,
 )
+from database.association import associations_of
+from database.store import fill_module_associations
 
 
 def absent_scripts(modules: list[str]) -> list[str]:
     """`STORE_ORDER` 里登记了、但还没有实体脚本的实体。"""
     return [module for module in modules if not script_path(module).exists()]
+
+
+def _has_associations(module: str) -> bool:
+    """该实体是否声明了关联表（复数属性）。"""
+    return bool(associations_of(module))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -106,6 +113,20 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         per_module[module] = counts
         print(describe(module, counts, out_dir, time.time() - entity_started))
+
+    # 第二遍：关联表的两端可能分属前后两个模块（如 primary_performs 的父端 primary
+    # 先建、子端 perform 后建），必须等全部模块都建完再统一填。
+    pending = [module for module in modules if _has_associations(module)]
+    if pending:
+        print(f"[2/2] 补填关联表（{len(pending)} 个模块）")
+        for module in pending:
+            entity_started = time.time()
+            counts = fill_module_associations(
+                module, stores, out_dir, vacuum=not arguments.no_vacuum
+            )
+            if counts:
+                per_module[module] = counts
+            print(describe(module, counts, out_dir, time.time() - entity_started))
 
     rows = sum(sum(counts.values()) for counts in per_module.values())
     size = sum((out_dir / f"{module}.sqlite").stat().st_size for module in per_module)

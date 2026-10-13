@@ -14,9 +14,7 @@ export const WindowChannels = {
     /** 窗口控制命令（渲染 → 主，单向） */
     command: "window:command",
     /** 窗口状态变化（主 → 渲染，单向） */
-    state: "window:state",
-    /** 主动索取一次当前状态（渲染 → 主，请求/应答） */
-    stateRequest: "window:state-request"
+    state: "window:state"
 } as const;
 
 /**
@@ -46,7 +44,7 @@ export interface WindowState {
     isFullScreen: boolean;
 }
 
-/** preload 挂到 `window.desktop` 上的方法集合。 */
+/** preload 挂到 `window.desktop.window` 上的方法集合。 */
 export interface DesktopWindowApi {
     /** 最小化窗口 */
     minimize: () => void;
@@ -54,10 +52,16 @@ export interface DesktopWindowApi {
     toggleMaximize: () => void;
     /** 关闭窗口（等价于用户点右上角 ×） */
     close: () => void;
-    /** 当前是否最大化 */
-    isMaximized: () => boolean;
-    /** 当前是否全屏 */
-    isFullScreen: () => boolean;
-    /** 订阅窗口状态变化；返回取消订阅函数 */
+    /**
+     * 订阅窗口状态变化，返回取消订阅函数。
+     *
+     * 主进程在页面加载完成时会主动推一次当前状态，所以订阅之后不必再问一遍，
+     * 也不会有"先画成未最大化、再跳一下"的闪烁。
+     */
     onStateChange: (listener: (state: WindowState) => void) => () => void;
+}
+
+/** preload 挂到 `window.desktop` 上的全部能力。 */
+export interface DesktopApi {
+    window: DesktopWindowApi;
 }

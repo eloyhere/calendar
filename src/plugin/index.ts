@@ -30,10 +30,10 @@ export type { CalendarPlugin } from "./plugins/types";
 /* 依赖与路由实例 */
 export { useRoute, useRouter, RouterLink, RouterView } from "./dependencies";
 export type { RouteRecordRaw, Router, RouterHistory } from "./dependencies";
-export { router } from "./router";
+export { createAppRouter } from "./router";
 
 /* 路由表 */
-export { RouteName, routes } from "./router";
+export { RouteName, routes, resolveRoutePath } from "./router";
 export type { AppRoute } from "./route-meta";
 
 /* 菜单树 */

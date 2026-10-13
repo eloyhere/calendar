@@ -62,9 +62,6 @@ const ICNS_TYPES = [
     ["ic14", 512] // 256pt @2x
 ];
 
-/** 超采样倍数：4×4 = 每像素 16 个采样点。 */
-const SUBSAMPLES = 4;
-
 /* ========================================================================== */
 /* 一、SVG 解析                                                                */
 /* ========================================================================== */
@@ -73,21 +70,42 @@ const SUBSAMPLES = 4;
  * 把 XML 拆成元素树。
  *
  * 只处理元素、注释、自闭合标签——icon.svg 里没有 CDATA、实体引用与命名空间前缀，
- * 正则足够；为这个用途写一个通用 XML 解析器是过度设计。
+ * 正则足够；为这个用途写一个通用 XML 解析器是过度设计。两条踩过的坑记在这里：
+ *
+ * 1. **注释必须在扫描标签前剔除**。注释正文里的 `<stop ... />` 会被当成真标签收进
+ *    树里，把 `<defs>` 的层级搅乱，结果是渐变表里莫名少几项。剔除时用等长空白替
+ *    换而不是删除，这样报错里的位置仍对应原文。
+ * 2. **自闭合的 `/` 不能留给属性段**。属性段若写成 `[^>"']*`，它会把 `... />` 里的
+ *    空格和斜杠一起吃掉，`selfClosing` 永远是空串，所有元素都被当成"开标签"压栈，
+ *    树直接塌掉。所以属性段要么以引号对结尾，要么收在 `/` 或 `>` 之前。
+ *
+ * 收尾还会核对闭合标签的名字与栈顶是否一致：这份文件被手工改坏时，应当在这里
+ * 报出具体行号，而不是安静地渲染出一张缺东西的图。
  */
 function parseXml(source) {
-    const text = source.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "");
+    const text = source
+        .replace(/<\?xml[\s\S]*?\?>/g, "")
+        // 注释的结束符是 `-->`，不能写成 `</...>`：正文里的 `<circle ... />` 会被
+        // 当成了结束标记，注释只切掉一半，剩下半截正文混进标签流。
+        .replace(/<!--[\s\S]*?-->/g, (comment) => " ".repeat(comment.length));
     const stack = [];
     let rootNode = null;
 
-    const tagPattern = /<(\/?)([A-Za-z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g;
+    const tagPattern =
+        /<(\/?)([A-Za-z][\w:-]*)((?:\s+[\w:-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g;
     let match;
 
     while ((match = tagPattern.exec(text)) !== null) {
         const [, closing, name, rawAttrs, selfClosing] = match;
 
         if (closing) {
-            stack.pop();
+            const open = stack.pop();
+            if (!open || open.name !== name) {
+                throw new Error(
+                    `SVG 标签不配对：在第 ${lineOf(text, match.index)} 行遇到 </${name}>，` +
+                        `栈顶是 <${open ? open.name : "空"}>`
+                );
+            }
             continue;
         }
 
@@ -95,6 +113,8 @@ function parseXml(source) {
         const parent = stack[stack.length - 1];
         if (parent) {
             parent.children.push(node);
+        } else if (rootNode) {
+            throw new Error(`SVG 有多个根元素：<${rootNode.name}> 与 <${name}>`);
         } else {
             rootNode = node;
         }
@@ -107,7 +127,21 @@ function parseXml(source) {
     if (!rootNode) {
         throw new Error("SVG 里没有找到根元素");
     }
+    if (stack.length > 0) {
+        throw new Error(`SVG 有未闭合的标签：<${stack[stack.length - 1].name}>`);
+    }
     return rootNode;
+}
+
+/** 字符下标 → 行号（从 1 开始），用于报错定位。 */
+function lineOf(text, index) {
+    let line = 1;
+    for (let i = 0; i < index && i < text.length; i += 1) {
+        if (text[i] === "\n") {
+            line += 1;
+        }
+    }
+    return line;
 }
 
 /** 解析 `key="value"`；本图形的属性都用双引号。 */
@@ -203,9 +237,15 @@ function collectGradients(rootNode) {
         const cy = num(node.attrs, "cy", 0.5);
         const r = num(node.attrs, "r", 0.5);
 
-        gradients.set(node.attrs.id, (x, y) => {
-            const t = r === 0 ? 0 : Math.hypot(x - cx, y - cy) / r;
-            return sampleStops(stops, clamp01(t));
+        // 半径按包围盒对角线换算（规范做法），所以非正方形包围盒上的径向渐变是椭圆。
+        // 若改成"宽高各自归一化"，圆盘上那团暖光会算成完全不同的形状。
+        gradients.set(node.attrs.id, (x, y, bounds) => {
+            const unitsPerRadius = r * Math.hypot(bounds.width, bounds.height);
+            if (unitsPerRadius === 0) {
+                return sampleStops(stops, 0);
+            }
+            const distance = Math.hypot((x - cx) * bounds.width, (y - cy) * bounds.height);
+            return sampleStops(stops, clamp01(distance / unitsPerRadius));
         });
     }
 
@@ -256,29 +296,6 @@ const clamp01 = (value) => (value < 0 ? 0 : value > 1 ? 1 : value);
 /* ========================================================================== */
 /* 二、几何判定                                                                 */
 /* ========================================================================== */
-
-/**
- * 圆角矩形命中判定。
- *
- * 先判"内矩形"（上下边中间那条横带 + 左右边中间那条竖带，两者的并集正好是
- * 去角矩形），命中就直接返回；否则只在四个角上做圆判定。
- */
-function roundedRectContains(x, y, rect) {
-    const { x: rx, y: ry, width, height, radius } = rect;
-    const r = Math.min(radius, width / 2, height / 2);
-    if (x < rx || y < ry || x > rx + width || y > ry + height) {
-        return false;
-    }
-    if (x >= rx + r && x <= rx + width - r) {
-        return true;
-    }
-    if (y >= ry + r && y <= ry + height - r) {
-        return true;
-    }
-    const cornerX = x < rx + r ? rx + r : rx + width - r;
-    const cornerY = y < ry + r ? ry + r : ry + height - r;
-    return Math.hypot(x - cornerX, y - cornerY) <= r;
-}
 
 /** `d` → 段列表。只支持 M L H V C A Z（绝对坐标，icon.svg 里就是这么写的）。 */
 function parsePathData(d) {
@@ -502,37 +519,58 @@ function compileIcon(svgSource) {
     const gradients = collectGradients(svg);
     const shapes = [];
 
-    for (const node of svg.children) {
-        if (["defs", "title", "desc"].includes(node.name)) {
-            continue;
+    /**
+     * 递归展开元素。
+     *
+     * `<g>` 只做属性继承（fill / opacity / stroke 等），不建自己的几何——分组在
+     * 本图形里只用来给一组点共用一个 fill，展开后与逐个写属性等价。
+     */
+    const walk = (node, inherited) => {
+        if (["defs", "title", "desc", "linearGradient", "radialGradient"].includes(node.name)) {
+            return;
         }
 
-        const shape = compileShape(node);
-        const opacity = num(node.attrs, "opacity", 1);
+        const attrs = { ...inherited, ...node.attrs };
 
-        shape.fill = resolveFill(parsePaint(node.attrs.fill), shape.bounds, gradients, opacity);
-        shape.fillAlpha = opacity * num(node.attrs, "fill-opacity", 1);
-
-        const strokePaint = parsePaint(node.attrs.stroke);
-        const strokeWidth = num(node.attrs, "stroke-width", 0);
-        if (strokePaint.kind !== "none" && strokeWidth > 0) {
-            if (strokePaint.kind !== "solid") {
-                throw new Error(`<${node.name}> 的描边用了渐变；本脚本只支持纯色描边`);
+        if (node.name === "g") {
+            for (const child of node.children) {
+                walk(child, attrs);
             }
+            return;
+        }
+
+        const shape = compileShape({ name: node.name, attrs });
+        const opacity = num(attrs, "opacity", 1);
+
+        shape.fill = resolveFill(parsePaint(attrs.fill), shape.bounds, gradients, opacity);
+        shape.fillAlpha = opacity * num(attrs, "fill-opacity", 1);
+
+        const strokePaint = parsePaint(attrs.stroke);
+        const strokeWidth = num(attrs, "stroke-width", 0);
+        if (strokePaint.kind !== "none" && strokeWidth > 0) {
             shape.stroke = {
-                color: strokePaint.color,
+                paint: resolveFill(
+                    strokePaint,
+                    shape.bounds,
+                    gradients,
+                    opacity * num(attrs, "stroke-opacity", 1)
+                ),
                 width: strokeWidth,
-                alpha: opacity * num(node.attrs, "stroke-opacity", 1)
+                round: attrs["stroke-linecap"] === "round"
             };
         }
 
         shapes.push(shape);
+    };
+
+    for (const node of svg.children) {
+        walk(node, {});
     }
 
     return { viewBox, shapes };
 }
 
-/** 单个元素 → `{ bounds, inside(x, y) }`。 */
+/** 单个元素 → `{ bounds, distance(x, y) }`；distance 为"到图形边界的有符号距离"（内含为负）。 */
 function compileShape(node) {
     if (node.name === "rect") {
         const rect = {
@@ -542,7 +580,7 @@ function compileShape(node) {
             height: num(node.attrs, "height"),
             radius: num(node.attrs, "rx")
         };
-        return { element: node.name, bounds: rect, inside: (x, y) => roundedRectContains(x, y, rect) };
+        return { element: node.name, bounds: rect, distance: (x, y) => roundedRectDistance(x, y, rect) };
     }
 
     if (node.name === "circle") {
@@ -552,12 +590,15 @@ function compileShape(node) {
         return {
             element: node.name,
             bounds: { x: cx - r, y: cy - r, width: r * 2, height: r * 2 },
-            inside: (x, y) => Math.hypot(x - cx, y - cy) <= r
+            distance: (x, y) => Math.hypot(x - cx, y - cy) - r
         };
     }
 
     if (node.name === "path") {
-        const edges = buildEdges(parsePathData(node.attrs.d));
+        const segments = parsePathData(node.attrs.d);
+        const edges = buildEdges(segments);
+        const isClosed = segments.some((segment) => segment.type === "Z");
+
         let minX = Infinity;
         let minY = Infinity;
         let maxX = -Infinity;
@@ -568,21 +609,57 @@ function compileShape(node) {
             maxX = Math.max(maxX, edge.from[0], edge.to[0]);
             maxY = Math.max(maxY, edge.from[1], edge.to[1]);
         }
+
+        // 开放路径的两个端点：描边圆头（stroke-linecap="round"）以端点为中心画半圆，
+        // 只按"到边界的距离"算会得到平切口，所以这里把端点也纳入距离场。
+        const endpoints = isClosed
+            ? []
+            : [edges[0].from, edges[edges.length - 1].to];
+
         return {
             element: node.name,
             bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
-            inside: (x, y) => windingContains(edges, x, y)
+            inside: (x, y) => windingContains(edges, x, y),
+            distance: (x, y) => {
+                let nearest = Infinity;
+                for (const edge of edges) {
+                    const d = distanceToSegment(x, y, edge.from, edge.to);
+                    if (d < nearest) {
+                        nearest = d;
+                    }
+                }
+                for (const endpoint of endpoints) {
+                    const d = Math.hypot(x - endpoint[0], y - endpoint[1]);
+                    if (d < nearest) {
+                        nearest = d;
+                    }
+                }
+                return windingContains(edges, x, y) ? -nearest : nearest;
+            }
         };
     }
 
     throw new Error(`icon.svg 里出现了本脚本不认识的元素：<${node.name}>`);
 }
 
+/** 圆角矩形的有符号距离：内部为负，边界为 0，外部为正。 */
+function roundedRectDistance(x, y, rect) {
+    const r = Math.min(rect.radius, rect.width / 2, rect.height / 2);
+    const halfWidth = rect.width / 2;
+    const halfHeight = rect.height / 2;
+    const dx = Math.abs(x - (rect.x + halfWidth)) - (halfWidth - r);
+    const dy = Math.abs(y - (rect.y + halfHeight)) - (halfHeight - r);
+    const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+    const inside = Math.min(Math.max(dx, dy), 0);
+    return outside + inside - r;
+}
+
 /**
  * 填充解析。
  *
  * 渐变按 SVG 默认的 `objectBoundingBox` 单位处理：`x1/y1/x2/y2` 与 `cx/cy/r` 都是
- * 相对**该图形包围盒**的比例，这里换算到盒内归一化坐标再取样。
+ * 相对**该图形包围盒**的比例。这里把"盒内归一化坐标 + 包围盒尺寸"一起交给渐变，
+ * 径向渐变需要后者才能按对角线算半径。
  */
 function resolveFill(paint, bounds, gradients, opacity) {
     if (paint.kind === "none") {
@@ -596,11 +673,12 @@ function resolveFill(paint, bounds, gradients, opacity) {
     if (!gradient) {
         throw new Error(`找不到渐变 #${paint.id}`);
     }
-    // 圆形的 `objectBoundingBox` 半径在 SVG 里按"更扁的那一边"缩放，不是按对角线。
-    // 包围盒是正方形时两者等价；icon.svg 里用径向渐变的图形都是正方形，所以直接
-    // 用归一化坐标即可，不做椭圆拉伸。
     return (x, y) => {
-        const [r, g, b, a] = gradient((x - bounds.x) / bounds.width, (y - bounds.y) / bounds.height);
+        const [r, g, b, a] = gradient(
+            (x - bounds.x) / bounds.width,
+            (y - bounds.y) / bounds.height,
+            bounds
+        );
         return [r, g, b, a * opacity];
     };
 }
@@ -610,14 +688,17 @@ function resolveFill(paint, bounds, gradients, opacity) {
 /* ========================================================================== */
 
 /**
- * 渲染成 RGBA 缓冲区。
+ * 渲染成 PNG。
  *
  * 流程：
- * 1. 按尺寸建立 `scale = 目标尺寸 / viewBox 边长` 的坐标映射；
- * 2. 每个图层单独出一张**覆盖率掩码**（8 位，4×4 超采样）；描边掩码由同一个
- *    "图形 + 描边宽度"的命中判定直接算（把判定条件放宽 strokeWidth/2），
- *    因此圆角矩形的金边不需要另一套几何；
- * 3. 逐图层把颜色与掩码做 source-over 叠加，最后压成 PNG。
+ * 1. 建立 `图形坐标 → 像素坐标` 的映射（`scale = 目标尺寸 / viewBox 边长`）；
+ * 2. 每个图层单独出一份**有符号距离场**（SDF，按像素中心采样）。填充覆盖率由
+ *    SDF 直接算 `clamp(0.5 - sdf, 0, 1)`，描边覆盖率由 `clamp(half + 0.5 - |sdf|)`
+ *    算——两者共用同一份 SDF，圆角矩形的金边因此不需要另一套几何；
+ * 3. 逐图层做 source-over 叠加，最后压成 PNG。
+ *
+ * 用 SDF 而不是逐点内外测试，是因为描边本质上是"到边界的距离 ≤ strokeWidth/2"，
+ * 而填充是"距离 ≤ 0"——同一份距离场把两件事一次算清，且边缘天然抗锯齿。
  */
 function renderIcon(icon, size) {
     const [viewX, viewY, viewWidth, viewHeight] = icon.viewBox;
@@ -625,30 +706,35 @@ function renderIcon(icon, size) {
     const pixels = new Float32Array(size * size * 4);
 
     for (const shape of icon.shapes) {
-        const mask = rasterizeMask(shape, size, viewX, viewY, scale);
-        if (!mask) {
+        const field = rasterizeSdf(shape, size, viewX, viewY, scale);
+        if (!field) {
             continue;
         }
-        compositeLayer(pixels, size, shape, mask, viewX, viewY, scale);
+        compositeLayer(pixels, size, shape, field, viewX, viewY, scale);
     }
 
     return encodePng(size, size, toRgba8(pixels, size));
 }
 
 /**
- * 单图层的覆盖率掩码。
+ * 单图层的距离场。
  *
- * 返回 `{ fill: Uint8Array, stroke: Uint8Array|null, alpha: Uint8Array|null }`，
- * 其中 fill/stroke 是 0~255 的覆盖率，alpha 是"该层最终要用的透明度分母"。
+ * 返回 `{ left, top, width, height, data }`，`data` 是逐像素的**有符号距离**（图形
+ * 坐标）：图形内部为负、边界为 0、外部为正。填充覆盖率由它算 `clamp(0.5 - sdf)`，
+ * 描边覆盖率由 `clamp(strokeHalf + 0.5 - |sdf|)` 算——两者共用一份距离场，
+ * 圆角矩形的金边因此不需要另一套几何。
+ *
+ * 只算图形包围盒外扩描边宽度的矩形区域；没有描边时外扩 2 个像素兜住抗锯齿。
  */
-function rasterizeMask(shape, size, viewX, viewY, scale) {
+function rasterizeSdf(shape, size, viewX, viewY, scale) {
+    const strokeHalf = shape.stroke ? shape.stroke.width / 2 : 0;
+    const pad = Math.max(strokeHalf, 2 / scale);
     const { bounds } = shape;
-    const strokeWidth = shape.stroke ? shape.stroke.width : 0;
 
-    const left = Math.max(0, Math.floor((bounds.x - viewX - strokeWidth) * scale) - 1);
-    const top = Math.max(0, Math.floor((bounds.y - viewY - strokeWidth) * scale) - 1);
-    const right = Math.min(size - 1, Math.ceil((bounds.x - viewX + bounds.width + strokeWidth) * scale) + 1);
-    const bottom = Math.min(size - 1, Math.ceil((bounds.y - viewY + bounds.height + strokeWidth) * scale) + 1);
+    const left = Math.max(0, Math.floor((bounds.x - viewX - pad) * scale));
+    const top = Math.max(0, Math.floor((bounds.y - viewY - pad) * scale));
+    const right = Math.min(size - 1, Math.ceil((bounds.x - viewX + bounds.width + pad) * scale));
+    const bottom = Math.min(size - 1, Math.ceil((bounds.y - viewY + bounds.height + pad) * scale));
 
     if (right < left || bottom < top) {
         return null;
@@ -656,64 +742,41 @@ function rasterizeMask(shape, size, viewX, viewY, scale) {
 
     const boxWidth = right - left + 1;
     const boxHeight = bottom - top + 1;
-    const fill = shape.fill ? new Uint8Array(boxWidth * boxHeight) : null;
-    const stroke = shape.stroke ? new Uint8Array(boxWidth * boxHeight) : null;
-
-    if (!fill && !stroke) {
-        return null;
-    }
-
-    const half = strokeWidth / 2;
-    const step = 1 / (SUBSAMPLES + 1);
-    const total = SUBSAMPLES * SUBSAMPLES;
+    const data = new Float32Array(boxWidth * boxHeight);
 
     for (let py = top; py <= bottom; py += 1) {
         for (let px = left; px <= right; px += 1) {
-            let fillHits = 0;
-            let strokeHits = 0;
-
-            for (let sy = 1; sy <= SUBSAMPLES; sy += 1) {
-                for (let sx = 1; sx <= SUBSAMPLES; sx += 1) {
-                    const x = viewX + (px + sx * step) / scale;
-                    const y = viewY + (py + sy * step) / scale;
-                    // "图形外扩 half" 用距离场近似：命中本体，或落在本体外 half 之内。
-                    const inside = shape.inside(x, y);
-                    if (inside) {
-                        fillHits += 1;
-                        strokeHits += 1;
-                    } else if (stroke && shape.distanceTo(x, y) <= half) {
-                        strokeHits += 1;
-                    }
-                }
-            }
-
-            const offset = (py - top) * boxWidth + (px - left);
-            if (fill) {
-                fill[offset] = Math.round((fillHits / total) * 255);
-            }
-            if (stroke) {
-                stroke[offset] = Math.round((strokeHits / total) * 255);
-            }
+            const x = viewX + (px + 0.5) / scale;
+            const y = viewY + (py + 0.5) / scale;
+            data[(py - top) * boxWidth + (px - left)] = shape.distance(x, y);
         }
     }
 
-    return { left, top, boxWidth, boxHeight, fill, stroke };
+    return { left, top, width: boxWidth, height: boxHeight, data };
 }
 
 /** 逐层 source-over 合成。 */
-function compositeLayer(pixels, size, shape, mask, viewX, viewY, scale) {
-    const { left, top, boxWidth, boxHeight, fill, stroke } = mask;
+function compositeLayer(pixels, size, shape, field, viewX, viewY, scale) {
+    const strokeHalf = shape.stroke ? shape.stroke.width / 2 : 0;
+    const pixel = 1 / scale;
 
-    for (let py = top; py < top + boxHeight; py += 1) {
-        for (let px = left; px < left + boxWidth; px += 1) {
-            const offset = (py - top) * boxWidth + (px - left);
-            const fillCoverage = fill ? fill[offset] / 255 : 0;
-            const strokeCoverage = stroke ? stroke[offset] / 255 : 0;
+    for (let py = field.top; py < field.top + field.height; py += 1) {
+        for (let px = field.left; px < field.left + field.width; px += 1) {
+            const sdf = field.data[(py - field.top) * field.width + (px - field.left)];
+
+            // 覆盖率 = "该像素里有多大比例满足条件"，用 SDF 做一像素宽的软过渡。
+            const fillCoverage = shape.fill ? clamp01(0.5 - sdf / pixel) : 0;
+            const edgeCoverage = shape.stroke
+                ? clamp01((strokeHalf + 0.5 * pixel - Math.abs(sdf)) / pixel)
+                : 0;
+
+            if (fillCoverage <= 0 && edgeCoverage <= 0) {
+                continue;
+            }
 
             // 像素中心落在图形坐标系里的位置，用于取渐变色。
             const x = viewX + (px + 0.5) / scale;
             const y = viewY + (py + 0.5) / scale;
-
             const target = (py * size + px) * 4;
 
             if (fillCoverage > 0 && shape.fill) {
@@ -721,13 +784,12 @@ function compositeLayer(pixels, size, shape, mask, viewX, viewY, scale) {
                 blend(pixels, target, r, g, b, a * shape.fillAlpha * fillCoverage);
             }
 
-            if (strokeCoverage > 0 && shape.stroke) {
-                const { color, alpha } = shape.stroke;
-                // 描边掩码里已经含了本体，这里用"扩边覆盖率"表达描边的外沿：
-                // 本体部分由上面的填充负责，故取扩边后与本体之差只在无填充时使用。
-                const coverage = shape.fill ? strokeCoverage - fillCoverage : strokeCoverage;
-                if (coverage > 0) {
-                    blend(pixels, target, color[0], color[1], color[2], alpha * coverage);
+            if (edgeCoverage > 0 && shape.stroke) {
+                // 描边覆盖率里含了本体；有填充时本体已由上面画过，这里只取外扩的环带。
+                const alpha = shape.fill ? Math.max(0, edgeCoverage - fillCoverage) : edgeCoverage;
+                if (alpha > 0) {
+                    const [r, g, b, a] = shape.stroke.paint(x, y);
+                    blend(pixels, target, r, g, b, a * alpha);
                 }
             }
         }
@@ -922,6 +984,19 @@ function main() {
     report(`安装包 .icns (${ICNS_TYPES.length} 项)`, icnsPath, icns.length);
 
     console.log(`[build-icons] 完成，用时 ${Date.now() - started} ms`);
+
+    // 调试用：把每个尺寸单独落盘，方便肉眼核对渲染结果（不参与构建产物）。
+    const previewDir = process.env.CALENDAR_ICON_PREVIEW;
+    if (previewDir) {
+        fs.mkdirSync(previewDir, { recursive: true });
+        for (const [size, png] of pngBySize) {
+            fs.writeFileSync(path.join(previewDir, `gen-${size}.png`), png);
+        }
+        console.log(`[build-icons] 预览已写入 ${path.relative(root, previewDir)}`);
+    }
 }
 
-main();
+// 仅当被直接执行时才生成图标；被 require 进来时只暴露函数，方便单独调参或测试。
+if (require.main === module) {
+    main();
+}

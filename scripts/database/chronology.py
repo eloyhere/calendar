@@ -1,6 +1,7 @@
 """chronology：纪年。
 
-纪年：层次上与 `epoch`（世）对接；历史纪年还缺「年号 × 朔望月」的对照表，故本轮只建表、不写行。
+纪年：一个朔望年一条，`epoch` 取该年首所属的世（1 世 = 30 朔望月），
+`synodic` 指向该朔望年，`lengthOfSynodicMonth` 记该年的月数（12 / 13）。
 
     python scripts/database/chronology.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 
@@ -26,7 +27,8 @@ MODULE = "chronology"
 TITLE = "纪年"
 
 #: 需要先建好的实体：它提供父级 identity，经 Stores.identities 传递
-DEPENDS: tuple[str, ...] = ()
+#: （`chronology.epoch` 指向 `epoch`，单独运行时由 seed_dependencies 现算世的序号）
+DEPENDS: tuple[str, ...] = ("epoch",)
 
 
 def build(stores: Stores, out_dir: Path, *, vacuum: bool = True) -> dict[str, int]:

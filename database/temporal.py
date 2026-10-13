@@ -30,12 +30,15 @@ def create(connection: sqlite3.Connection) -> None:
 def collect(workbook: Workbook, history: "History | None" = None) -> list[int]:
     """汇总全库出现过的所有绝对时间，去重并升序排列。
 
-    两部分：
+    三部分：
 
     1. 工作簿自身的每个时间戳，加上由月末、旬、周、月相推导出的时间点；
-    2. 历史表（朝代/年号/人物/事件）用到的年份边界与同年错位时间点。
+    2. 历史表（朝代/年号/人物/事件）用到的年份边界与同年错位时间点；
+    3. 七部派生历法（天文纪年 / 节气纪年 / 格里高利历 / 木星历法 / 轩辕纪年 /
+       干支年 / 回归年）的年界与月界 —— 见 `database/calendars.py`。
 
-    历史表的时间列同样是 `temporal.identity` 的外键，必须一起收进来。
+    这些都是 `temporal.identity` 的外键，必须一起收进来，否则子表的
+    `start` / `end` 会指向不存在的行。
     """
     stamps: set[int] = {month.absolute for month in workbook.months}
     for month in workbook.months:
@@ -46,6 +49,10 @@ def collect(workbook: Workbook, history: "History | None" = None) -> list[int]:
             stamps.add(term.absolute)
     stamps.update(workbook.month_ends)
     stamps.update(workbook.derived_stamps())
+
+    from .calendars import stamps as calendar_stamps
+
+    stamps.update(calendar_stamps(workbook))
 
     from .history import history_stamps, load_history
 

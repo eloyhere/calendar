@@ -1,17 +1,26 @@
 /**
- * 菜单树：把路由表推导成侧栏能直接 `v-for` 的形状。
+ * 菜单树：把路由表推导成能直接 `v-for` 的形状。
  *
  * 这是"路由表即唯一配置"的另一半——菜单不再手写。新增页面只要在
  * `plugin/router.ts` 的 `routes` 里加一条带 `meta.title` 的路由，
  * 菜单自动多一项，面包屑与窗口标题一并跟上。
  *
- * 推导只做两件事（都是路由树的形状对渲染不友好的地方）：
+ * ## `meta.menu` 的三种取值
  *
- * 1. 把 `meta.menu === false` 的节点自己藏起来、孩子提上来；
- * 2. 把"没有 `component` 的分组节点"标成不可跳转（点它只展开）。
+ * 菜单的深浅**本来就不统一**，所以这里要区分三种情况：
  *
- * 路径**不做任何拼接**：路由表里每一条 `path` 都已经是绝对路径，
- * 直接取 `route.path` 即可。
+ * | 写法                | 含义                                   | 例子                          |
+ * | ------------------- | -------------------------------------- | ----------------------------- |
+ * | 不写                | 有标题就露出来                          | 大多数页面、`/calendar` 这类域 |
+ * | `menu: false`       | 有子项时**露出自己**（渲染成不可跳转的分组） | `/calendar/astronomy` 天文历   |
+ * | `menu: "hidden"`    | 彻底藏起来，孩子提上来                   | `/agent/chat` 聊天出口         |
+ *
+ * 第二种是为了"三级菜单"：历法 → 天文历 → 简介/日历/数据。天文历自己不是页面
+ * （没有 `component`，点它只该展开），但**必须占一个位置**，否则八个历法的
+ * 简介/日历/数据会全被拍到同一层，出现八个一模一样的"简介"。
+ *
+ * 第三种给的是 `/agent/chat` 那种"纯出口"：它自己只是个 `<RouterView/>`，
+ * 六个聊天模式应当直接挂在"智能体"下面，中间不要多一层。
  *
  * 菜单顺序**就是 `routes` 里的声明顺序**，没有额外的排序字段。
  */
@@ -20,7 +29,7 @@ import type { AppRoute } from "./route-meta";
 import type { IconName } from "./icons";
 import { routes } from "./router";
 
-/** 侧栏菜单节点。 */
+/** 菜单节点。 */
 export interface MenuNode {
     /** 菜单文案，来自 `meta.title` */
     title: string;
@@ -39,20 +48,24 @@ function buildNodes(list: readonly AppRoute[]): MenuNode[] {
     const nodes: MenuNode[] = [];
 
     for (const route of list) {
-        // 先递归：当前节点自己不进菜单时，它的子节点要能顶上来
         const children = buildNodes(route.children ?? []);
-        const visible = route.meta?.menu !== false && Boolean(route.meta?.title);
+        const title = route.meta?.title ?? "";
+        const hidden = route.meta?.menu === "hidden" || title === "";
 
-        if (!visible) {
+        // 隐藏节点：自己不出现在菜单里，把孩子提升到当前位置。
+        // 没有标题的节点（外壳 `/`、纯出口 `/agent/chat`）也走这一支。
+        if (hidden) {
             nodes.push(...children);
             continue;
         }
 
+        // 自己没有 `component` 却是分组（`/calendar/astronomy` 这类）：
+        // 点它只会落到一个空白出口，所以给 `path: null` 让它只展开。
+        const isGroupOnly = children.length > 0 && !route.component;
+
         nodes.push({
-            title: route.meta?.title ?? "",
-            // 没有 `component` 的分组节点（`/calendar/astronomy` 这类）
-            // 被点走会落到一个空白出口，所以给 `null` 让它只展开
-            path: children.length > 0 && !route.component ? null : route.path,
+            title,
+            path: isGroupOnly ? null : route.path,
             icon: route.meta?.icon ?? null,
             description: route.meta?.description ?? null,
             children
@@ -63,10 +76,10 @@ function buildNodes(list: readonly AppRoute[]): MenuNode[] {
 }
 
 /**
- * 侧栏菜单树。
+ * 菜单树。
  *
- * 顶层是外壳路由 `/`（`meta.menu: false`，没有标题），所以它会被当作隐藏节点、
- * 把六个业务域直接提成顶层——正是侧栏想要的形状。
+ * 顶层是外壳路由 `/`（没有标题），因此它会被当作隐藏节点、把孩子提成顶层——
+ * 于是六个业务域成为菜单条上的一级项。
  */
 export function createMenuTree(list: readonly AppRoute[] = routes): MenuNode[] {
     return buildNodes(list);

@@ -1,21 +1,32 @@
 <script setup lang="ts">
 /**
- * 页头：品牌 + 横向菜单。
+ * 页头 —— 同时也是这个无边框窗口的**自绘标题栏**。
  *
- * ## 为什么只铺两层
+ * ## 为什么只有一条横条
  *
- * 本项目的菜单是三层（域 → 历法实体 → 简介/日历/数据）。`ElMenu` 的
- * `mode="horizontal"` 只把第一层铺在菜单条上、第二层放进下拉弹层，第三层在
- * 弹层里已经没有可读的层级了。
+ * 窗口是无边框的（见 `main/window.ts` 的 `frame: false`），所以"品牌 + 导航 +
+ * 窗口按钮"没有第二处可放。曾经设想过"标题栏一条 + 导航栏一条"，但窗口默认只有
+ * 900×670，两条横条会把内容区压掉 100px 以上，而且品牌会在两条里各出现一次。
+ * 合成一条后：左边品牌、中间导航、右边窗口按钮，横向空间本来就是够的。
  *
- * 所以这里渲染策略是：
+ * ## 拖拽区怎么划
  *
- * - **一级**（概览 / 智能体 / 历法 / 命理 / 年 / 性能）留在菜单条上；
- * - **二级**（九个历法、六个聊天模式、排盘页面……）进下拉，每一项都可点，
- *   点了进它自己的默认页（`redirect` 指向的子页）；
- * - **三级**不再挂进菜单——它由进页面之后的面包屑与页面内的 `ElTabs`/页头承担。
+ * 整条 `app-region: drag`，再把**每个可交互元素**标回 `no-drag`（导航是 `<ElMenu>`、
+ * 品牌是链接、右边是三颗按钮）。反过来做——只留一条空白 spacer 可拖——在导航项不
+ * 够宽的时候几乎没有可拖的地方。被标了 `no-drag` 的元素不会触发拖拽，也就不会
+ * 抢掉点击。
  *
- * 这样菜单条恒定一行高，不需要 `ellipsis` 折叠，也不会横向滚动。
+ * ## 菜单深浅不一，交给递归组件
+ *
+ * 一级（概览 / 智能体 / 历法 / 命理 / 年 / 性能）铺在菜单条上，之后每一层都交给
+ * `AppMenuTree` 递归渲染——因为菜单本身的深度就不统一：
+ *
+ * - 概览：**一级**，没有子项，直接跳转；
+ * - 智能体、命理、年、性能：**二级**（智能体下有"工作流"，命理下是六个排盘页）；
+ * - 历法：**三级**（历法 → 天文历 → 简介 / 日历 / 数据）。
+ *
+ * 这里因此不写任何 `v-if="第几层"` 的分支；多深、哪里深，全由
+ * `plugin/router.ts` 的嵌套决定。
  *
  * ## 配色
  *
@@ -23,7 +34,13 @@
  * 就是白底 + `--el-color-primary` 高亮，无需额外覆盖。
  */
 
+import { computed, watch } from "vue";
+
 import type { MenuNode } from "../plugin";
+import { useRoute } from "../plugin";
+import AppBrandIcon from "./AppBrandIcon.vue";
+import AppMenuTree from "./AppMenuTree.vue";
+import AppWindowControls from "./AppWindowControls.vue";
 
 interface Props {
     /** 菜单树，来自 `createMenuTree()` */
@@ -34,20 +51,41 @@ interface Props {
     brand?: string;
 }
 
-const props = withDefaults(defineProps<Props>(), { brand: "日历" });
+const props = withDefaults(defineProps<Props>(), { brand: "轩辕历法" });
 
 const emit = defineEmits<{
     /** 用户点了菜单项 */
     select: [path: string];
 }>();
+
+const route = useRoute();
+
+/** 当前页面标题，显示在品牌右边，给这条 48px 的横条一点信息量。 */
+const pageTitle = computed(() => {
+    const title = route.meta.title;
+    return title ? String(title) : "";
+});
+
+/** 页面标题同时写进 `document.title`（任务栏悬停、窗口列表都用它）。 */
+watch(
+    pageTitle,
+    (title) => {
+        document.title = title ? `${title} · ${props.brand}` : props.brand;
+    },
+    { immediate: true }
+);
 </script>
 
 <template>
     <header class="app-header">
         <div class="app-header__brand">
-            <ElIcon :size="20" class="app-header__logo"><Calendar /></ElIcon>
+            <AppBrandIcon :size="24" />
             <ElText tag="strong" class="app-header__title">{{ props.brand }}</ElText>
         </div>
+
+        <span v-if="pageTitle" class="app-header__divider" aria-hidden="true"></span>
+
+        <span v-if="pageTitle" class="app-header__page is-truncated">{{ pageTitle }}</span>
 
         <ElMenu
             :default-active="props.activePath"
@@ -55,84 +93,88 @@ const emit = defineEmits<{
             :ellipsis="false"
             router
             class="app-header__menu">
-            <template v-for="group in props.items" :key="group.title">
-                <!-- 一级：有子节点的域，渲染成下拉 -->
-                <ElSubMenu
-                    v-if="group.children.length > 0"
-                    :index="`group:${group.title}`"
-                    popper-class="app-header__popper">
-                    <template #title>
-                        <AppIcon v-if="group.icon" :name="group.icon" />
-                        <span class="app-header__label">{{ group.title }}</span>
-                    </template>
-
-                    <!-- 二级：叶子直接跳转；带子节点的分组也渲染成可点项（走 redirect） -->
-                    <ElMenuItem
-                        v-for="child in group.children"
-                        :key="child.path ?? child.title"
-                        :index="child.path ?? child.title"
-                        @click="emit('select', child.path ?? '')">
-                        <AppIcon v-if="child.icon" :name="child.icon" />
-                        <template #title>
-                            <span class="app-header__label">{{ child.title }}</span>
-                        </template>
-                    </ElMenuItem>
-                </ElSubMenu>
-
-                <!-- 一级：没有子节点的（概览）直接跳转 -->
-                <ElMenuItem
-                    v-else
-                    :index="group.path ?? group.title"
-                    @click="emit('select', group.path ?? '')">
-                    <AppIcon v-if="group.icon" :name="group.icon" />
-                    <template #title>
-                        <span class="app-header__label">{{ group.title }}</span>
-                    </template>
-                </ElMenuItem>
-            </template>
+            <AppMenuTree :items="props.items" @select="emit('select', $event)" />
         </ElMenu>
+
+        <AppWindowControls />
     </header>
 </template>
 
 <style scoped>
 .app-header {
+    /*
+     * 整条可拖拽。子元素里凡是能点的都标了 `no-drag`（菜单、品牌图标、窗口按钮），
+     * 剩下导航右侧那段空白就是拖窗口 / 双击最大化用的地方。
+     */
+    app-region: drag;
     align-items: center;
     background: var(--el-bg-color);
     border-bottom: 1px solid var(--el-border-color);
     display: flex;
-    gap: 24px;
-    height: 60px;
-    padding: 0 20px;
+    flex-shrink: 0;
+    gap: 12px;
+    height: 48px;
+    padding-left: 14px;
+    padding-right: 14px;
+    /* 标题栏里的文字不该被选中（拖拽时会出现蓝色选区） */
+    user-select: none;
 }
 
 .app-header__brand {
+    app-region: no-drag;
     align-items: center;
     display: flex;
     flex-shrink: 0;
     gap: 8px;
 }
 
-.app-header__logo {
-    color: var(--el-color-primary);
+.app-header__title {
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
-.app-header__title {
-    font-size: 16px;
+/* 品牌与当前页之间的细竖线：两者层级不同，需要一道分隔 */
+.app-header__divider {
+    background: var(--el-border-color);
+    flex-shrink: 0;
+    height: 16px;
+    width: 1px;
+}
+
+.app-header__page {
+    color: var(--el-text-color-secondary);
+    flex-shrink: 0;
+    font-size: 13px;
+    max-width: 160px;
 }
 
 .app-header__menu {
+    app-region: no-drag;
+    /*
+     * Element Plus 的横向菜单写死了 60px 高（那是"页头"的规格），会把 48px 的
+     * 标题栏撑出去、菜单项文字被上下裁掉。压回标题栏高度。
+     */
+    --el-menu-horizontal-height: 48px;
     border-bottom: none;
     flex: 1;
     min-width: 0;
 }
 
-.app-header__label {
-    margin-left: 4px;
+/*
+ * 菜单项本身也要压扁：`.el-menu--horizontal > .el-menu-item` 的 60px 高度与
+ * 2px 选中下划线都属于"独立页头"，在标题栏里会顶出边框、下划线也贴不到底。
+ */
+.app-header__menu :deep(.el-menu--horizontal > .el-menu-item),
+.app-header__menu :deep(.el-menu--horizontal > .el-sub-menu .el-sub-menu__title) {
+    border-bottom: none;
+    height: 48px;
+    line-height: 48px;
+    padding: 0 12px;
 }
 
-/* 下拉弹层里的图标与文字对齐 */
-.app-header__popper :deep(.el-menu-item) {
-    display: flex;
-    gap: 6px;
+/* 横向菜单容器自己也要压扁（它在 Element Plus 里同样是 60px） */
+.app-header__menu :deep(.el-menu--horizontal) {
+    height: 48px;
 }
 </style>

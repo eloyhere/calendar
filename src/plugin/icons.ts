@@ -48,6 +48,7 @@ export const ICON_NAMES = [
     "Search",
     "TrendCharts",
     "Promotion",
+    "User",
 
     // ── 外壳与状态 ──────────────────────────────────────────────────────────
     "Fold",
@@ -55,7 +56,17 @@ export const ICON_NAMES = [
     "HomeFilled",
     "Refresh",
     "WarningFilled",
-    "CircleCheckFilled"
+    "CircleCheckFilled",
+    "Delete",
+
+    // ── 深度研究 ────────────────────────────────────────────────────────────
+    // 证据的三种立场各要一个图标：支持 / 反证 / 口径。反证必须与支持一样显眼，
+    // 所以不能只用一个"信息"图标带过（见 entity/research.ts 的说明）。
+    "CircleCheck",
+    "Warning",
+    "InfoFilled",
+    "QuestionFilled",
+    "Aim"
 ] as const;
 
 /** 图标名联合类型；`meta.icon` 只能取这里的字面量。 */

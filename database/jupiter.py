@@ -10,11 +10,14 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 from .derived import Calendar, calendar
 from .schema import Table, by_module
 from .source import Workbook
+
+if TYPE_CHECKING:  # 仅用于类型标注：store.py 在函数内 import 本模块，运行时不能互相导入
+    from .store import Stores
 
 #: 换算法则，实现 `load()` 时的唯一依据
 RULE = "以岁星（木星）约 11.862 年绕天一周为年长，年首取木星与太阳同黄经的时刻；需星历表。"
@@ -34,9 +37,9 @@ def create(connection: sqlite3.Connection) -> None:
     CALENDAR.create(connection)
 
 
-def load(connection: sqlite3.Connection, workbook: Workbook) -> dict[str, int]:
+def load(connection: sqlite3.Connection, stores: "Stores", workbook: Workbook) -> dict[str, int]:
     """写入年表与月表。换算法则见 `RULE`。"""
-    return CALENDAR.load(connection, workbook)
+    return CALENDAR.load(connection, stores, workbook)
 
 
 def export(workbook: Workbook) -> dict[str, Iterator[str]]:

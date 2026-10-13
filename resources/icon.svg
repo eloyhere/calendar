@@ -21,7 +21,7 @@
             <stop offset="1" stop-color="#C4881A" />
         </linearGradient>
 
-        <!-- 四正点用的小金 */
+        <!-- 四正点用的小金 -->
         <linearGradient id="xuan-yuan-dot" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#FFE9AE" />
             <stop offset="1" stop-color="#D9A32C" />

@@ -99,3 +99,23 @@ class Identities:
         for order, key in enumerate(keys, start=1):
             self.maps.setdefault(table_name, {}).setdefault(key, order)
         self.counters[table_name] = len(keys)
+
+    def seed_orders(self, table_name: str, orders: dict[int, int]) -> None:
+        """层级表（元/会/运/世）预登记「全局序号 -> identity」。
+
+        单独运行 `scripts/database/perform.py` 这类脚本时，父级的分库还没建，
+        但父级 identity 完全由工作簿决定（`Assembly.groups()`），于是先在这里登记，
+        子表写库时的「业务键 -> identity」换算就能照常进行。
+        `setdefault` 保证已从数据库回读到的真值不被覆盖。
+        """
+        mapping = self.maps.setdefault(table_name, {})
+        for order, identity in orders.items():
+            mapping.setdefault(order, identity)
+        if orders:
+            self.counters[table_name] = max(
+                self.counters.get(table_name, 0), max(orders.values())
+            )
+
+    def known(self, table_name: str) -> bool:
+        """是否已登记过某张父表的业务键。"""
+        return table_name in self.maps

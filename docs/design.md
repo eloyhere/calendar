@@ -91,7 +91,10 @@ src/datasource/<entity>.sqlite.ts     数据访问层（镜像上面的查询语
 src/repository/<entity>.repository.ts
 src/service/<entity>.service.ts
 src/store/<entity>.store.ts
-src/renderer/src/views/<Entity>View.vue
+src/view/<Domain>View.vue              域出口：只写一个 <RouterView/>，把渲染委托给下级
+                                       （CalendarView.vue、AgentView.vue …）
+src/view/<domain>/<Page>View.vue       该实体真正要写内容的页面，一页一文件
+                                       （calendar/astronomy/EntryView.vue、DataView.vue …）
 database/<entity>.py                  该实体的建表 + 装数逻辑
 scripts/database/<entity>.py          该实体的初始化脚本（调用上面的逻辑，建出 .sqlite）
                                       scripts/database/initialise.py 按依赖顺序调用全部实体脚本
@@ -184,7 +187,12 @@ SQLite 不支持跨文件外键，因此各分库之间**不施加外键约束**
   类名按表命名（`AstronomyYearSqlite` / `AstronomyMonthSqlite`），但 `name` 与 `runnerOf`
   仍是实体模块名（`astronomy`），因为一个实体只有一个 `.sqlite` 文件。
   全部由 `scripts/generate_datasource.py` 生成。
-- Vue：`src/renderer/src/views/<Entity>View.vue`。
+- Vue：`src/view/`，一个域一个子目录（`view/calendar/<entity>/`、`view/numerology/` …），
+  域本身是 `view/<Domain>View.vue` 的透传出口。路由表在 `src/plugin/router.ts`，
+  菜单由路由表推导（`src/plugin/menu.ts`），页面壳是
+  `src/component/PageShell.vue`。完整分层见 `src/plugin/README.md`。
+  文件命名统一 `<名字>.vue` 的**大驼峰**形式（`EntryView.vue`、`AppHeader.vue`），
+  与 `database/sql/` 下的小写文件名区分开：TS/Vue 侧一律大驼峰，Python/SQL 侧一律小写。
 
 ## 6. SQL 查询契约（每个实体一套）
 

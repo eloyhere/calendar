@@ -55,6 +55,7 @@ declare module "vue" {
         ElTooltip: typeof import("element-plus")["ElTooltip"];
         ElAffix: typeof import("element-plus")["ElAffix"];
         ElWatermark: typeof import("element-plus")["ElWatermark"];
+        ElPopover: typeof import("element-plus")["ElPopover"];
 
         // 栅格与分隔
         ElRow: typeof import("element-plus")["ElRow"];
@@ -77,6 +78,7 @@ declare module "vue" {
         ElTimelineItem: typeof import("element-plus")["ElTimelineItem"];
         ElTree: typeof import("element-plus")["ElTree"];
         ElSegmented: typeof import("element-plus")["ElSegmented"];
+        ElCollapseTransition: typeof import("element-plus")["ElCollapseTransition"];
         ElAvatar: typeof import("element-plus")["ElAvatar"];
         ElBadge: typeof import("element-plus")["ElBadge"];
         ElEmpty: typeof import("element-plus")["ElEmpty"];
@@ -97,6 +99,7 @@ declare module "vue" {
         ElSelect: typeof import("element-plus")["ElSelect"];
         ElOption: typeof import("element-plus")["ElOption"];
         ElRadioGroup: typeof import("element-plus")["ElRadioGroup"];
+        ElRadio: typeof import("element-plus")["ElRadio"];
         ElRadioButton: typeof import("element-plus")["ElRadioButton"];
         ElCheckbox: typeof import("element-plus")["ElCheckbox"];
         ElSwitch: typeof import("element-plus")["ElSwitch"];
@@ -130,13 +133,16 @@ declare module "vue-router" {
         title?: string;
         /** 菜单图标，取值必须来自 `src/plugin/icons.ts` 的白名单 */
         icon?: IconName;
-        /** 是否出现在侧栏菜单里；缺省"有标题就出现" */
-        menu?: boolean;
-        /** 同级排序权重，越小越靠前 */
-        order?: number;
-        /** 页面说明，用于菜单提示与页头副标题 */
+        /**
+         * 是否出现在菜单里。
+         *
+         * - 不写：有 `title` 就出现；
+         * - `false`：**有子项时露出自己**（渲染成只展开、不跳转的分组），
+         *   用于 `历法 → 天文历 → 简介/日历/数据` 这种三级结构；
+         * - `"hidden"`：彻底藏起来，子项提升到上一层，用于 `/agent/chat` 这种纯出口。
+         */
+        menu?: boolean | "hidden";
+        /** 页面说明，用于菜单项提示与页头副标题 */
         description?: string;
-        /** 是否参与 keep-alive 缓存；缺省 `true` */
-        keepAlive?: boolean;
     }
 }

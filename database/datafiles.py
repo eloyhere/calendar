@@ -4,10 +4,12 @@
 
 行数据只有一份来源，因此 SQL 与 `src/sqlite/*.sqlite` 不会漂移：
 
-- `temporal / phenology / moon_phase / part / week / synodic / primary /
-  encounter / perform / epoch / astronomy … tropical` 来自 `calendar.xlsx`；
-- `dynasty / era / person / event` 来自 `database/data/*.csv`；
-- `chronology` 暂无数据源，只有建表语句。
+- `temporal / phenology / climate / phase / part / week / synodic / primary /
+  encounter / perform / epoch` 来自 `calendar.xlsx` 的直接解析；
+- `chronology` 由朔望年换算（一个朔望年一条纪年）；
+- 七部派生历法（`astronomy / gregory / jupiter / natural / tree / tropical` 与
+  `climate` 的节气纪年）来自 `database/calendars.py` 的换算法则；
+- `dynasty / era / person / event` 来自 `database/data/*.csv`。
 """
 
 from __future__ import annotations
@@ -93,18 +95,29 @@ def _parents(workbook: Workbook, parent: str) -> dict[int, int]:
 
 def _calendar(module: Any) -> Exporter:
     def exporter(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
-        return [(module.YEAR_TABLE, iter(())), (module.MONTH_TABLE, iter(()))]
+        workbook = _workbook(source)
+        returned = module.export(workbook)
+        return [
+            (module.YEAR_TABLE, returned[module.YEAR_TABLE.name]),
+            (module.MONTH_TABLE, returned[module.MONTH_TABLE.name]),
+        ]
 
     return exporter
 
 
-def _climate(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
-    """模块 `climate` 三张表：气候表有行数据，节气纪年的年 / 月导出空内容。"""
+def _chronology(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
     workbook = _workbook(source)
+    return [(chronology.TABLE, chronology.rows(workbook))]
+
+
+def _climate(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
+    """模块 `climate` 三张表：气候表 + 节气纪年的年 / 月。"""
+    workbook = _workbook(source)
+    exported = climate.export(workbook)
     return [
-        (climate.CLIMATE_TABLE, climate.rows(workbook)),
-        (climate.YEAR_TABLE, climate.year_rows(workbook)),
-        (climate.MONTH_TABLE, climate.month_rows(workbook)),
+        (climate.CLIMATE_TABLE, exported[climate.CLIMATE_TABLE.name]),
+        (climate.YEAR_TABLE, exported[climate.YEAR_TABLE.name]),
+        (climate.MONTH_TABLE, exported[climate.MONTH_TABLE.name]),
     ]
 
 
@@ -131,7 +144,7 @@ EXPORTERS: dict[str, Exporter] = {
     "era": _single(era),
     "person": _single(person),
     "event": _single(event),
-    "chronology": _single(chronology),
+    "chronology": _chronology,
     "astronomy.calendar": _calendar(astronomy),
     "gregory.calendar": _calendar(gregory),
     "jupiter.calendar": _calendar(jupiter),

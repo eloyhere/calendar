@@ -2,14 +2,21 @@
  * 全局样式。
  *
  * Element Plus 自带的样式在 `src/plugin/dependencies.ts` 里引入（`element-plus/dist/index.css`），
- * 本文件只补三件它不管的事：
+ * 本文件只补四件它不管的事：
  *
  * 1. **满高**：应用外壳用 `height: 100vh` 撑满窗口，需要 `html / body / #app` 一路
  *    把高度传下来，否则 `100vh` 之外还会多出滚动条；
  * 2. **不整页滚动**：窗口本身不滚，滚动条归内容区（`ElMain` 的 `overflow: auto`）。
  *    这样侧栏与页头在长表格页面里保持固定；
  * 3. **等宽数字**：历表里全是 4~5 位年份与时分秒，比例字体下数字宽度不一，
- *    列会对不齐。统一给数字开 `tabular-nums`。
+ *    列会对不齐。统一给数字开 `tabular-nums`；
+ * 4. **面板与说明文字**：`.xy-panel` / `.xy-panel-title` / `.xy-note` / `.xy-dim` /
+ *    `.xy-chip` 这组工具类（见文末「面板与语义文字」一节）。
+ *
+ * 第 4 条是从参考项目 `R:\calendar` 的 `style.css` 借过来的：那边把「一块白底圆角
+ * 面板 + 一条带主色竖线的标题」做成全局工具类，全部页面共用一套观感。本项目的
+ * `PageShell` 负责页面级外壳（标题 + 四种状态），**页面内部的次级分块**则交给
+ * `.xy-panel`——两者不重叠：`PageShell` 一页只有一个，`.xy-panel` 一页可以有多个。
  */
 
 *,
@@ -68,4 +75,78 @@ body {
 .el-scrollbar__wrap::-webkit-scrollbar-thumb {
     background: var(--el-border-color-darker);
     border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------- 面板与语义文字 */
+
+/**
+ * 次级面板：页面内部分块的白底容器。
+ *
+ * 与 `ElCard` 的分工：`ElCard` 是组件，带 `header` / `footer` 插槽与自己的内边距；
+ * `.xy-panel` 只是一个壳，标题由调用方按 `.xy-panel-title` 写，因此同一页里
+ * 十几个分块可以长得完全一致而不用逐块配 `ElCard` 的参数。
+ */
+.xy-panel {
+    background: var(--el-bg-color);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+/** 面板标题：左侧一道主色竖线，是参考项目里全站统一的分块语言。 */
+.xy-panel-title {
+    align-items: center;
+    color: var(--el-text-color-primary);
+    display: flex;
+    font-size: 15px;
+    font-weight: 600;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.xy-panel-title::before {
+    background: var(--el-color-primary);
+    border-radius: 2px;
+    content: "";
+    display: inline-block;
+    flex-shrink: 0;
+    height: 14px;
+    width: 3px;
+}
+
+/** 次级说明文字：口径、依据、为什么这里是空的。 */
+.xy-note {
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+    line-height: 1.8;
+    margin: 10px 0 0;
+}
+
+.xy-note:first-child {
+    margin-top: 0;
+}
+
+.xy-note strong {
+    color: var(--el-text-color-regular);
+    font-weight: 600;
+}
+
+/** 更弱的说明文字：计数、时间戳这类附注。 */
+.xy-dim {
+    color: var(--el-text-color-placeholder);
+    font-size: 12px;
+}
+
+/** 数值 / 标识切片：时刻、编号、可复制的短值。 */
+.xy-chip {
+    align-items: center;
+    background: var(--el-fill-color-lighter);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: var(--el-border-radius-base);
+    display: inline-flex;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    gap: 4px;
+    padding: 1px 7px;
+    white-space: nowrap;
 }

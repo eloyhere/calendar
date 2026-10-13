@@ -4,8 +4,9 @@
 - `climate_year`  节气纪年的年：一年 24 个月；
 - `climate_month` 节气纪年的月：每月以主节气或主中气起算。
 
-年 / 月两张表由「气候 + phenology 的候」换算而来，换算法则见 `RULE`；本轮只建表，
-行数据待生成（`load()` 记 0 行，`export()` 导出空内容）。
+年 / 月两张表的换算法则见 `database/calendars.py` 的 `"climate"` 一项：年界取**立春**
+（源表 kind=1 的主节气），年内 24 个月按主节气 / 主中气逐个起算，首尾按覆盖区间截断。
+两张表由本模块的装配体 `CALENDAR` 生成行，与其余六部派生历法共用同一段代码。
 
 气候是**长度 5 天**的单位，与候、相同长：每个朔望月自月首起每 5 天一个气候，
 末段不足 5 天时按月末截断，因此同一个朔望月内的气候首尾相接、无缝无叠。
@@ -19,7 +20,8 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING, Iterator
 
-from .core import batch_write, iter_rows
+from .core import iter_rows
+from .derived import Calendar, calendar
 from .schema import Table, by_module, emit_sqlite, table_of
 from .source import Workbook
 
@@ -36,6 +38,15 @@ YEAR_TABLE: Table = table_of("climate_year")
 MONTH_TABLE: Table = table_of("climate_month")
 #: 本模块的主表：气候表（唯一有行数据的表）
 TABLE: Table = CLIMATE_TABLE
+
+#: 节气纪年的装配体：一个库里还有气候主表，故显式指定年 / 月两张表
+CALENDAR: Calendar = calendar(
+    module="climate",
+    title="节气纪年",
+    rule=RULE,
+    year_table_name="climate_year",
+    month_table_name="climate_month",
+)
 
 #: 气候长，天数
 LENGTH_OF_DAY = 5
@@ -89,35 +100,38 @@ def rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
 
 
 def year_rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
-    """节气纪年的年表：换算法则见 `RULE`，本轮不产出数据。"""
-    return iter(())
+    """节气纪年的年表：立春到下一个立春前 1 秒。"""
+    return CALENDAR.year_rows(workbook)
 
 
 def month_rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
-    """节气纪年的月表：换算法则见 `RULE`，本轮不产出数据。"""
-    return iter(())
+    """节气纪年的月表：一年 24 个月，以主节气 / 主中气起算。"""
+    return CALENDAR.month_rows(workbook)
 
 
-def load(connection: sqlite3.Connection, stores: Stores, workbook: Workbook) -> dict[str, int]:
-    """写入气候表；年 / 月两张表待换算，记 0 行。
+def load(connection: sqlite3.Connection, stores: "Stores", workbook: Workbook) -> dict[str, int]:
+    """写入三张表。返回 `表名 -> 行数`。
 
-    气候表的 `month` 是跨库外键（指向 `synodic_month`），列里存的是业务键，
-    必须走 `database.store.write_table` 做「业务键 -> identity」换算，
+    气候表与节气纪年的月表都有跨库外键（`climate.month` -> `synodic_month`、
+    `climate_month.year` -> `climate_year`），列里存的是业务键，
+    必须走 `database/store.py` 的 `write_table` 做「业务键 -> identity」换算，
     不能直接 `batch_write`——否则 `database/verify.py` 的跨库核对会全数报错。
     """
     from .store import write_table  # 延迟导入：store.py 在函数内才 import 本模块
 
-    return {
-        CLIMATE_TABLE.name: write_table(connection, stores, CLIMATE_TABLE, rows(workbook)),
-        YEAR_TABLE.name: 0,
-        MONTH_TABLE.name: 0,
+    counts = {
+        CLIMATE_TABLE.name: write_table(
+            connection, stores, CLIMATE_TABLE, rows(workbook)
+        )
     }
+    counts.update(CALENDAR.load(connection, stores, workbook))
+    return counts
 
 
 def export(workbook: Workbook) -> dict[str, Iterator[str]]:
     """生成 `database/sql/climate/data.sql` 的各表内容。"""
-    return {
+    exported = {
         CLIMATE_TABLE.name: iter_rows(CLIMATE_TABLE, rows(workbook)),
-        YEAR_TABLE.name: iter(()),
-        MONTH_TABLE.name: iter(()),
     }
+    exported.update(CALENDAR.export(workbook))
+    return exported

@@ -28,7 +28,17 @@ from .history import History, load_history
 from .schema import Table, by_module, emit_sqlite
 from .source import Workbook
 
-__all__ = ["STORE_ORDER", "Stores", "build_store", "create_module", "load_module", "write_meta"]
+__all__ = [
+    "STORE_ORDER",
+    "Stores",
+    "build_store",
+    "build_stores",
+    "create_module",
+    "fill_module_associations",
+    "finish_associations",
+    "load_module",
+    "write_meta",
+]
 
 
 def write_meta(
@@ -79,7 +89,7 @@ class Stores:
     #: 跨库外键的「业务键 -> identity」登记表（见 database/identity.py）
     identities: Identities = field(default_factory=Identities)
     #: 分库输出目录：填关联表时要按模块名找父库
-    out_dir: Path = field(default_factory=lambda: Path(src/sqlite))
+    out_dir: Path = field(default_factory=lambda: Path("src") / "sqlite")
 
 
 def remapper(stores: Stores, table: Table) -> Callable[[Sequence[Any]], Sequence[Any]]:
@@ -254,7 +264,7 @@ def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> 
     elif module == "event":
         counts["event"] = write_table(connection, stores, event.TABLE, event.rows(history))
     elif module == "chronology":
-        counts["chronology"] = chronology.load(connection, workbook)
+        counts["chronology"] = chronology.load(connection, stores, workbook)
     else:
         module_object = {
             "astronomy.calendar": astronomy,
@@ -264,7 +274,7 @@ def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> 
             "tree.calendar": tree,
             "tropical.calendar": tropical,
         }[module]
-        counts.update(module_object.load(connection, workbook))
+        counts.update(module_object.load(connection, stores, workbook))
 
     stores.counts.update(counts)
     stores.per_module[module] = counts
@@ -318,8 +328,10 @@ def fill_associations(
     `synodic.sqlite`、phenology 在 `phenology.sqlite`），所以按表名解析到各自的库：
     本模块的表用当前连接，别的模块的表**临时只读打开、读完立刻关闭**。
 
-    父端所在的模块一定在本模块之前建好（`STORE_ORDER` 即依赖顺序），
-    因此这里总能读到完整区间。
+    关联表两端的模块**不一定**在本模块之前建好：`primary_performs` 的父端 primary
+    先建、子端 perform 后建；`synodic_month_weeks` 的子端 week 也排在 synodic 之后。
+    因此本函数只在"全部模块都建完"的第二遍里调用（见 `finish_associations`），
+    那时两端都已是完整区间。
     """
     from .association import associations_of, fill
     from .schema import TABLES
@@ -349,13 +361,83 @@ def fill_associations(
     return fill(module, connection, stores, connection_for)
 
 
+def fill_module_associations(
+    module: str,
+    stores: Stores,
+    out_dir: Path,
+    *,
+    vacuum: bool = True,
+) -> dict[str, int]:
+    """第二遍：只填某个模块的关联表，并把结果写回该库的 `_meta`。
+
+    必须等全部模块都建完之后再调用：关联表两端的模块未必都排在它前面。
+    """
+    from .association import associations_of
+
+    path = out_dir / f"{module}.sqlite"
+    tables = by_module(module)
+    if not path.exists() or not associations_of(module):
+        return {}
+
+    stores.out_dir = out_dir
+    opened: dict[str, sqlite3.Connection] = {}
+    try:
+        connection = connect(str(path))
+        try:
+            counts = {table.name: count_rows(connection, table.name) for table in tables}
+            counts.update(fill_associations(module, stores, connection, opened))
+            connection.commit()
+            write_meta(
+                connection,
+                module=module,
+                source_name=stores.source_name,
+                digest=stores.digest,
+                counts={name: counts.get(name, 0) for name in tables},
+            )
+        finally:
+            connection.close()
+    finally:
+        # 句柄跨模块留着，后面那个模块重建自己的库时 `unlink` 会报 WinError 32
+        for handle in opened.values():
+            handle.close()
+
+    if vacuum:
+        connection = connect(str(path))
+        try:
+            connection.execute("PRAGMA journal_mode = DELETE")
+            connection.execute("VACUUM")
+            connection.execute("ANALYZE")
+            connection.commit()
+        finally:
+            connection.close()
+
+    return {name: counts.get(name, 0) for name in tables}
+
+
+def finish_associations(
+    stores: Stores,
+    out_dir: Path,
+    *,
+    modules: Sequence[str] | None = None,
+    vacuum: bool = True,
+) -> dict[str, dict[str, int]]:
+    """全部模块建完后统一填关联表（第二遍）。返回 `实体 -> (表名 -> 行数)`。"""
+    stores.out_dir = out_dir
+    result: dict[str, dict[str, int]] = {}
+    for module in modules or STORE_ORDER:
+        counts = fill_module_associations(module, stores, out_dir, vacuum=vacuum)
+        if counts:
+            result[module] = counts
+    return result
+
+
 def build_store(
     module: str,
     stores: Stores,
     out_dir: Path,
     *,
     vacuum: bool = True,
-    opened: dict[str, sqlite3.Connection] | None = None,
+    associations: bool = False,
 ) -> dict[str, int]:
     """建出某一个实体的 SQLite 文件，返回 `表名 -> 行数`。
 
@@ -365,17 +447,18 @@ def build_store(
     跨实体的键都从 `stores` 取（`identities` 里的父级 identity、`history` 里的历史数据），
     因此调用方必须先建好本实体依赖的那些实体 —— 顺序见 `STORE_ORDER`。
     一实体一个脚本（`scripts/database/<entity>.py`）就是对本函数的包装。
+
+    @param associations 只建本实体时置 True：本实体的关联表立刻填一遍。
+        整批建库时保持 False，由 `finish_associations()` 在全部模块建完后统一填 ——
+        关联表的另一端可能排在后面，提前填只会得到空表。
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{module}.sqlite"
-    # 只在本模块这一轮里缓存父库的只读句柄，用完立刻释放：
-    # 句柄若跨模块留着，后面那个模块重建自己的库时 `unlink` 会报 WinError 32。
-    local: dict[str, sqlite3.Connection] = {}
-    try:
-        return _build_one(module, stores, out_dir, path, vacuum=vacuum, cache=local)
-    finally:
-        for handle in local.values():
-            handle.close()
+    counts = _build_one(module, stores, out_dir, path, vacuum=vacuum)
+    if associations:
+        returned = fill_module_associations(module, stores, out_dir, vacuum=vacuum)
+        counts = returned or counts
+    return counts
 
 
 def _build_one(
@@ -385,7 +468,6 @@ def _build_one(
     path: Path,
     *,
     vacuum: bool,
-    cache: dict[str, sqlite3.Connection],
 ) -> dict[str, int]:
     if path.exists():
         path.unlink()
@@ -395,11 +477,8 @@ def _build_one(
     try:
         tables = create_module(connection, module)
         counts = load_module(connection, stores, module)
-        # 关联表（实体的复数集合字段）在主表写完后统一填充：
-        # 两端的行都在了，才能按时间区间相交把关系算出来。
-        counts.update(
-            fill_associations(module, stores, connection, cache)
-        )
+        # 关联表（实体的复数集合字段）留到第二遍再填：两端的模块未必都排在本模块之前，
+        # 见 fill_module_associations() / finish_associations()。
         connection.commit()
         write_meta(
             connection,
@@ -453,5 +532,11 @@ def build_stores(
             f"  {module:<12} {len(counts)} 表 {total:>10,} 行 "
             f"{size / 1048576:>8.3f} MiB {time.time() - started:>5.1f}s"
         )
+
+    # 第二遍：全部模块都建完，关联表的两端才都完整。
+    for module, counts in finish_associations(
+        stores, out_dir, modules=targets, vacuum=vacuum
+    ).items():
+        stores.per_module[module] = counts
 
     return stores.per_module

@@ -53,16 +53,19 @@
  * 每个 `component` 都是 `() => import("../view/...")`，且**必须是静态字面量**：
  * 动态模板串 Vite 静态分析不出来，构建期解析不出 chunk。
  *
- * ## history 模式与 `file://` 的冲突（打包前必读）
+ * ## 路由模式：hash，而不是 history
  *
- * 路由用 `createWebHistory()`。开发期（dev server）与 `electron-vite preview`
- * 都是 http，history 模式完全正常。
+ * `createWebHashHistory()`——沿用 electron-vite 模板的约定。URL 形如
+ * `app://local/index.html#/calendar/astronomy/entry`。
  *
- * 但打包后主进程是 `loadFile(...)`，页面跑在 `file://` 下，而 `file://` 的
- * 来源是 opaque 的：`history.pushState` 会抛 SecurityError，刷新与深链也会去请求
- * 真实文件路径而 404。**要让打包产物也能用 history 模式，必须让主进程用自定义
- * 协议（`protocol.handle("app://")` + `registerSchemesAsPrivileged`）装载页面，
- * 而不是 `loadFile`。** 只改这里不够，详见 `main/window.ts` 的 `loadRenderer`。
+ * 为什么不用 `createWebHistory()`：打包后页面由主进程装载，若走 `loadFile(...)`
+ * 就是 `file://`，而 `file://` 的来源是 opaque 的——`history.pushState` 会抛
+ * `SecurityError`，刷新与深链也会去请求真实文件路径而 404。
+ *
+ * `main/window.ts` 现在改用自定义协议 `app://` 装载（`registerSchemesAsPrivileged`
+ * + `protocol.handle`），页面因此拿到了正常来源，上面那个 `file://` 障碍已经不存在。
+ * 但这里**保持 hash 不变**：URL 里多一个 `#` 对桌面应用没有实际代价，而 hash 模式
+ * 在任何装载方式下都不会坏。真要换 history，只改本文件这一处即可。
  */
 
 import { createRouter, createWebHashHistory } from "./dependencies";
@@ -182,8 +185,9 @@ export const routes: AppRoute[] = [
         path: "/",
         name: RouteName.home,
         component: () => import("../component/AppShell.vue"),
-        // 外壳自己不是页面，标题挂在下面那个空路径子页上
-        meta: { menu: false },
+        // 外壳自己不是页面，也没有标题：`menu.ts` 会把没有标题的节点当隐藏节点，
+        // 把孩子（六个业务域）提升成菜单条上的一级项
+        meta: { menu: "hidden" },
         children: [
             {
                 // 概览：外壳的默认子页，路径就是 `/`
@@ -211,7 +215,7 @@ export const routes: AppRoute[] = [
                         name: RouteName.agentChat,
                         component: () => import("../view/agent/ChatView.vue"),
                         redirect: "/agent/chat/create",
-                        meta: { title: "对话", icon: "ChatLineSquare", menu: false },
+                        meta: { title: "对话", icon: "ChatLineSquare", menu: "hidden" },
                         children: [
                             {
                                 path: "/agent/chat/create",
@@ -764,7 +768,7 @@ export const routes: AppRoute[] = [
                 // 否则当前匹配出的 `pathMatch` 会被带过去并触发一条 router 警告。
                 path: "/:pathMatch(.*)*",
                 name: RouteName.fallback,
-                meta: { menu: false },
+                meta: { menu: "hidden" },
                 redirect: "/"
             }
         ]

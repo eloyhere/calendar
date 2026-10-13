@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
 
 from database.build import file_digest
 from database.source import read_workbook
-from database.store import STORE_ORDER, Stores
+from database.store import STORE_ORDER, Stores, fill_module_associations
 
 __all__ = [
     "DEFAULT_OUT",
@@ -99,13 +99,16 @@ def seed_dependencies(stores: Stores, depends: Sequence[str]) -> None:
     `initialise.py` 按顺序调用时父级已经在 `stores.identities` 里，这里只补缺、不覆盖。
     """
     for module in depends:
-        if module in stores.identities:
+        if stores.identities.known(module):
             continue
         package = importlib.import_module(f"database.{module}")
         assembly = getattr(package, "ASSEMBLY", None)
         if assembly is None:
             raise SystemExit(f"{module} 没有 ASSEMBLY，无法为它现算父级 identity")
-        stores.identities[module] = {group.order: group.identity for group in assembly.groups(stores.workbook)}
+        stores.identities.seed_orders(
+            module,
+            {group.order: group.identity for group in assembly.groups(stores.workbook)},
+        )
 
 
 def describe(module: str, counts: Mapping[str, int], out_dir: Path, seconds: float) -> str:
@@ -149,5 +152,12 @@ def run_entity(
     seed_dependencies(stores, depends)
     out_dir = Path(arguments.out)
     counts = build(stores, out_dir, vacuum=not arguments.no_vacuum)
+    # 单独建一个实体时顺手补填它的关联表：另一端的分库若已存在就能读到完整区间，
+    # 不存在时该关联表记 0 行。整批建库由 initialise.py 在全部建完后统一填。
+    filled = fill_module_associations(
+        module, stores, out_dir, vacuum=not arguments.no_vacuum
+    )
+    if filled:
+        counts = filled
     print(describe(module, counts, out_dir, time.time() - started))
     return 0
