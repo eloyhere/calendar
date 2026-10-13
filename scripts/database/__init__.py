@@ -87,9 +87,16 @@ def new_stores(source: Path) -> Stores:
     """解析工作簿 + 读历史数据，得到各实体共享的 `Stores`。
 
     整个初始化过程只调用一次：`database/source.py` 的约定是整本工作簿只解析一次。
+    `source_path` 记绝对路径：`database/store.py` 的 `ensure_derived()` 在只建部分实体
+    （`--only`，不含 temporal）时会用它重建一次解析结果，相对路径会随工作目录失效。
     """
     workbook = read_workbook(str(source))
-    return Stores(workbook=workbook, source_name=source.name, digest=file_digest(source))
+    return Stores(
+        workbook=workbook,
+        source_name=source.name,
+        source_path=str(source),
+        digest=file_digest(source),
+    )
 
 
 def seed_dependencies(stores: Stores, depends: Sequence[str]) -> None:
@@ -97,6 +104,9 @@ def seed_dependencies(stores: Stores, depends: Sequence[str]) -> None:
 
     父级 identity 完全由工作簿决定（`Assembly.groups()`），与父库是否已建好无关；
     `initialise.py` 按顺序调用时父级已经在 `stores.identities` 里，这里只补缺、不覆盖。
+
+    注意换算的是**分库自增 identity**，不是 `Group.identity`（后者是首个月首的绝对时间）：
+    层级表的行按全局序号升序插入，故 identity 就是它在 `groups()` 里的 1 起序号。
     """
     for module in depends:
         if stores.identities.known(module):
@@ -105,10 +115,15 @@ def seed_dependencies(stores: Stores, depends: Sequence[str]) -> None:
         assembly = getattr(package, "ASSEMBLY", None)
         if assembly is None:
             raise SystemExit(f"{module} 没有 ASSEMBLY，无法为它现算父级 identity")
-        stores.identities.seed_orders(
-            module,
-            {group.order: group.identity for group in assembly.groups(stores.workbook)},
-        )
+        stores.identities.seed_orders(module, order_identities(assembly, stores.workbook))
+
+
+def order_identities(assembly, workbook) -> dict[int, int]:
+    """层级表的「全局序号 -> 分库自增 identity」。"""
+    return {
+        group.order: position
+        for position, group in enumerate(assembly.groups(workbook), start=1)
+    }
 
 
 def describe(module: str, counts: Mapping[str, int], out_dir: Path, seconds: float) -> str:

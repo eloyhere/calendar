@@ -9,6 +9,7 @@
         "format": "prettier --write .",
         "lint": "eslint --cache .",
         "lint:fix": "eslint --cache --fix .",
+        "icons": "node scripts/build-icons.cjs",
         "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
         "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
         "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -16,10 +17,10 @@
         "dev": "electron-vite dev",
         "build": "npm run typecheck && electron-vite build",
         "postinstall": "electron-builder install-app-deps",
-        "deploy": "electron-vite build && electron-builder --win msi",
-        "build:unpack": "npm run build && electron-builder --dir",
-        "build:mac": "npm run build && electron-builder --mac",
-        "build:linux": "npm run build && electron-builder --linux"
+        "deploy": "npm run icons && electron-vite build && electron-builder --win msi",
+        "build:unpack": "npm run build && npm run icons && electron-builder --dir",
+        "build:mac": "npm run build && npm run icons && electron-builder --mac",
+        "build:linux": "npm run build && npm run icons && electron-builder --linux"
     },
     "dependencies": {
         "@electron-toolkit/preload": "^3.0.2",

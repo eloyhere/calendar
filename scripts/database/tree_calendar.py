@@ -1,7 +1,7 @@
 """tree.calendar：干支年。
 
-干支年（年 + 月）：以立春为年界，年干 =(年-4) mod 10、年支 =(年-4) mod 12，月按 24 节气的「节」分界；
-本轮只建表、不写行。
+干支年（年 + 月）：以立春为年界，年干 =(年-4) mod 10、年支 =(年-4) mod 12，月按 12 个「节」分界；
+换算法则见 `database/calendars.py` 的 `tree.calendar` 一项。
 
     python scripts/database/tree_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

@@ -76,30 +76,32 @@ def _synodic(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int
 
 
 def _hierarchy(module: Any, parent: str | None) -> Exporter:
+    """层级实体（元/会/运/世）：父列写**父层的全局序号**。
+
+    与 `database/store.py` 的 `load_module()` 走同一条路 —— 不在这里预算父级 identity，
+    统一交给 `database/sqlfiles.py` 的 `identity_resolver()` 按 `BUSINESS_KEY` 换算；
+    否则 `data.sql` 与 `src/sqlite/*.sqlite` 会漂移（层级表的 identity 是插入位置，
+    而 `Group.identity` 是首个月首的绝对时间，两者不是一回事）。
+    """
     def exporter(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
         workbook = _workbook(source)
-        parents = _parents(workbook, parent) if parent else None
-        rows = module.rows(workbook, parents) if parents is not None else module.rows(workbook)
-        return [(module.TABLE, rows)]
+        return [(module.TABLE, module.rows(workbook))]
 
     return exporter
 
 
-def _parents(workbook: Workbook, parent: str) -> dict[int, int]:
-    """父层"序号 -> identity"，与 database/store.py 的构建顺序一致。"""
-    from database import encounter, perform, primary
-
-    module = {"primary": primary, "encounter": encounter, "perform": perform}[parent]
-    return {group.order: group.identity for group in module.ASSEMBLY.groups(workbook)}
-
-
 def _calendar(module: Any) -> Exporter:
+    """七部派生历法：年表 / 月表的**行**（不是渲染好的 SQL）。
+
+    注意与 `module.export()` 的区别：`export()` 按项目约定直接产出 SQL 文本
+    （`core.iter_rows()` 的结果），而 `datafiles` 交给 `sqlfiles.write_data()`
+    的是行迭代器，由它自己渲染，故这里用 `year_rows()` / `month_rows()`。
+    """
     def exporter(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
         workbook = _workbook(source)
-        returned = module.export(workbook)
         return [
-            (module.YEAR_TABLE, returned[module.YEAR_TABLE.name]),
-            (module.MONTH_TABLE, returned[module.MONTH_TABLE.name]),
+            (module.YEAR_TABLE, module.CALENDAR.year_rows(workbook)),
+            (module.MONTH_TABLE, module.CALENDAR.month_rows(workbook)),
         ]
 
     return exporter
@@ -111,13 +113,12 @@ def _chronology(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[
 
 
 def _climate(source: Workbook | History) -> list[tuple[Table, Iterator[tuple[int, ...]]]]:
-    """模块 `climate` 三张表：气候表 + 节气纪年的年 / 月。"""
+    """模块 `climate` 三张表：气候表 + 节气纪年的年 / 月（行迭代器）。"""
     workbook = _workbook(source)
-    exported = climate.export(workbook)
     return [
-        (climate.CLIMATE_TABLE, exported[climate.CLIMATE_TABLE.name]),
-        (climate.YEAR_TABLE, exported[climate.YEAR_TABLE.name]),
-        (climate.MONTH_TABLE, exported[climate.MONTH_TABLE.name]),
+        (climate.CLIMATE_TABLE, climate.rows(workbook)),
+        (climate.YEAR_TABLE, climate.year_rows(workbook)),
+        (climate.MONTH_TABLE, climate.month_rows(workbook)),
     ]
 
 
@@ -157,9 +158,10 @@ EXPORTERS: dict[str, Exporter] = {
 ORDER: list[str] = [
     "temporal", "synodic", "phenology", "climate", "phase", "part", "week",
     "primary", "encounter", "perform", "epoch",
-    "dynasty", "era", "person", "event", "chronology",
+    "dynasty", "era", "person", "event",
     "astronomy.calendar", "gregory.calendar", "jupiter.calendar",
     "natural.calendar", "tree.calendar", "tropical.calendar",
+    "chronology",
 ]
 
 #: 需要历史数据而非工作簿的实体

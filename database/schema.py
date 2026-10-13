@@ -251,25 +251,26 @@ TABLES: list[Table] = [
     Table(
         name="epoch",
         module="epoch",
-        comment="世：30 朔望月。建元当天为第 1 世。",
+        comment="世：30 朔望年。建元所在的朔望年为第 1 世。",
         columns=[
             _identity(),
             _relative("本世在所属运内的序号 1-12"),
-            _absolute("全局世序号，建元当月所在世为 1，可为负"),
+            _absolute("全局世序号，建元所在世为 1，可为负"),
             Column("perform", "bigint", "所属运", references="perform.identity"),
             *_span(),
         ],
         indexes=[("perform", ["perform"])],
-        note="由 synodic_month 每 30 个一组推导，首尾都对齐工作簿。",
+        note="由 synodic_calendar_year 每 30 个朔望年一组推导，首尾都对齐工作簿。"
+             "一个朔望年含 12 或 13 个朔望月，故一个世含 360-390 个朔望月。",
     ),
     Table(
         name="perform",
         module="perform",
-        comment="运：12 世 = 360 朔望月。建元当天为第 1 运。",
+        comment="运：12 世 = 360 朔望年。建元所在的朔望年为第 1 运。",
         columns=[
             _identity(),
             _relative("本运在所属会内的序号 1-30"),
-            _absolute("全局运序号，建元当月所在运为 1，可为负"),
+            _absolute("全局运序号，建元所在运为 1，可为负"),
             Column("encounter", "bigint", "所属会", references="encounter.identity"),
             *_span(),
         ],
@@ -278,11 +279,11 @@ TABLES: list[Table] = [
     Table(
         name="encounter",
         module="encounter",
-        comment="会：30 运 = 360 世 = 10800 朔望月。建元当天为第 1 会。",
+        comment="会：30 运 = 360 世 = 10800 朔望年。建元所在的朔望年为第 1 会。",
         columns=[
             _identity(),
             _relative("本会在所属元内的序号 1-12"),
-            _absolute("全局会序号，建元当月所在会为 1，可为负"),
+            _absolute("全局会序号，建元所在会为 1，可为负"),
             Column("primary", "bigint", "所属元", references="primary.identity"),
             *_span(),
         ],
@@ -291,14 +292,15 @@ TABLES: list[Table] = [
     Table(
         name="primary",
         module="primary",
-        comment="元：12 会 = 360 运 = 4320 世 = 129600 朔望月。",
+        comment="元：12 会 = 360 运 = 4320 世 = 129600 朔望年。",
         columns=[
             _identity(),
             _relative("元序号，建元所在元为 1"),
-            _absolute("全局元序号，建元当月所在元为 1"),
+            _absolute("全局元序号，建元所在元为 1"),
             *_span(),
         ],
-        note="朔望月总数 290654 < 129600 × 3，故本库只有第 1 元；建表与推导逻辑保持通用。",
+        note="朔望年总数 23,500 < 129600，故本库只有建元前后的第 0、1 元；"
+             "建表与推导逻辑保持通用。",
     ),
     Table(
         name="dynasty",
@@ -385,17 +387,40 @@ TABLES: list[Table] = [
     Table(
         name="chronology",
         module="chronology",
-        comment="纪年。实体已定义，但 calendar.xlsx 不含纪年数据。",
+        comment="纪年。一个朔望年一条，与八部历法的年表一一对应。",
         columns=[
             _identity(),
-            _relative("纪年在年号内的序号"),
-            _absolute("全局纪年序号"),
+            _relative("本纪年在所属世内的序号 1-30"),
+            _absolute("全局纪年序号，按时间升序"),
             Column("epoch", "bigint", "所属世", references="epoch.identity"),
+            # 八部历法各一列年 + 一列月数，顺序与 src/entity/chronology.ts 一致
+            Column("astronomy", "bigint", "天文纪年的年", references="astronomy_year.identity"),
+            Column("lengthOfAstronomyMonth", "bigint", "天文纪年该年的月数"),
+            Column("climate", "bigint", "节气纪年的年", references="climate_year.identity"),
+            Column("lengthOfClimateMonth", "bigint", "节气纪年该年的月数，24"),
+            Column("gregory", "bigint", "格里高利历的年", references="gregory_year.identity"),
+            Column("lengthOfGregoryMonth", "bigint", "格里高利历该年的月数，12"),
+            Column("jupiter", "bigint", "木星历法的年", references="jupiter_year.identity"),
+            Column("lengthOfJupiterMonth", "bigint", "木星历法该年的月数，12"),
+            Column("natural", "bigint", "轩辕纪年的年", references="natural_year.identity"),
+            Column("lengthOfNaturalMonth", "bigint", "轩辕纪年该年的月数"),
+            Column("tree", "bigint", "干支年的年", references="tree_year.identity"),
+            Column("lengthOfTreeMonth", "bigint", "干支年该年的月数，12"),
+            Column("tropical", "bigint", "回归年的年", references="tropical_year.identity"),
+            Column("lengthOfTropicalMonth", "bigint", "回归年该年的月数，12"),
             Column("synodic", "bigint", "对应朔望年", references="synodic_calendar_year.identity"),
-            Column("lengthOfSynodicMonth", "bigint", "该纪年朔望月的月数"),
+            Column("lengthOfSynodicMonth", "bigint", "该纪年朔望月的月数，12 或 13"),
             *_span(),
         ],
-        note="数据源缺失，仅建表留空；层次上与 epoch 对接。",
+        indexes=[
+            ("epoch", ["epoch"]),
+            ("astronomy", ["astronomy"]),
+            ("gregory", ["gregory"]),
+            ("natural", ["natural"]),
+            ("synodic", ["synodic"]),
+        ],
+        note="八部历法的年都取「包含本纪年区间」的那一年（各历法的年平铺整条时间轴，"
+             "故对应唯一）；`lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值。",
     ),
 ]
 
@@ -446,7 +471,9 @@ for _module, _title, _comment in _DERIVED_CALENDARS:
                 Column("leap", "boolean", "是否闰年"),
                 *_span(),
             ],
-            note="建表与实体完整对应；行数据需由朔望月/回归年换算生成，暂不物化。",
+            note="换算法则见 database/calendars.py：年界按各历法自己的规则定，"
+                 "首尾按 calendar.xlsx 的覆盖区间截断，故年与年首尾相接。"
+                 "tropical / jupiter / astronomy 没有星历表，年长取 RULE 给出的平均周期。",
         )
     )
     TABLES.append(
@@ -466,7 +493,8 @@ for _module, _title, _comment in _DERIVED_CALENDARS:
                 *_span(),
             ],
             indexes=[("year", ["year"])],
-            note="建表与实体完整对应；行数据待生成。",
+            note="换算法则见 database/calendars.py：月界按各历法自己的规则定，"
+                 "首尾按所属年与覆盖区间截断，故月与月首尾相接、无缝无叠。",
         )
     )
 

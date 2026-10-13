@@ -32,7 +32,7 @@
 - 七部历法一律**平铺整个工作簿覆盖区间**：首尾按覆盖区间截断，保证年与年、月与月之间
   `[start, end]` 闭区间首尾相接、无缝隙、不重叠，也保证端点都落在 `temporal` 里。
 - `relative` 依 `Proleptic` 的约定（"在父表依赖层级当中的相对唯一序列数"）：
-  年表没有父表，取它所属**元**（1 元 = 129600 朔望月）内的序号；月表取年内的序号。
+  年表没有父表，取它所属**元**（1 元 = 129600 朔望年）内的序号；月表取年内的序号。
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ import bisect
 from dataclasses import dataclass
 
 from .core import EPOCH, absolute_of, decompose
-from .source import Workbook
+from .source import YEAR_INDEX_OFFSET, Workbook, year_index_of
 
 __all__ = [
     "ANCHOR",
@@ -67,8 +67,8 @@ ANCHOR = absolute_of(
 TROPICAL_YEAR_DAYS = 365.2422
 #: 岁星（木星）周期，回归年（`database/jupiter.py` 的 RULE）
 JUPITER_YEARS = 11.862
-#: 1 元 = 129600 朔望月（`database/primary.py`）
-MONTHS_PER_PRIMARY = 129_600
+#: 1 元 = 129600 朔望年（`database/primary.py`，实体口径）
+YEARS_PER_PRIMARY = 129_600
 
 #: 一个回归年的秒数 31,556,926.08 = 365.2422 × 86400，用整数比表示以免浮点累积漂移
 _YEAR_NUM = 3_155_692_608
@@ -107,8 +107,8 @@ _ORDINAL_NAMES: tuple[str, ...] = (
     "正月", "二月", "三月", "四月", "五月", "六月",
     "七月", "八月", "九月", "十月", "冬月", "腊月",
 )
-#: 轩辕纪年：建元所在纪年块标签 -2696 即轩辕 1 年
-NATURAL_YEAR_OFFSET = 2697
+#: 轩辕纪年：建元所在纪年块标签 -2696 即轩辕 1 年（= `source.YEAR_INDEX_OFFSET`）
+NATURAL_YEAR_OFFSET = YEAR_INDEX_OFFSET
 
 
 @dataclass(slots=True)
@@ -127,6 +127,10 @@ class Unit:
     ordinal: int = 0
     #: 是否闰（闰月 / 闰年 / 格里高利历的闰年）
     leap: bool = False
+    #: 显式指定的天数；为 0 时按区间长度向 0 取整。
+    #: 朔望月的天数取自源表的大小月标注（大=30 / 小=29），而不是相邻朔月的实际间隔
+    #: —— 后者恒为 29.5 天左右，向 0 取整永远是 29，与 `synodic_month.lengthOfDay` 对不上。
+    day_count: int = 0
 
     @property
     def seconds(self) -> int:
@@ -136,7 +140,7 @@ class Unit:
     @property
     def days(self) -> int:
         """区间含多少个整天，向 0 取整。"""
-        return self.seconds // SECONDS_PER_DAY
+        return self.day_count or self.seconds // SECONDS_PER_DAY
 
 
 # --------------------------------------------------------------------------- #
@@ -148,34 +152,16 @@ def coverage(workbook: Workbook) -> tuple[int, int]:
     return workbook.months[0].absolute, workbook.month_ends[-1]
 
 
-class MonthAxis:
-    """绝对时间 -> 全局朔望月序号 / 元序号。"""
-
-    __slots__ = ("starts", "first_index")
-
-    def __init__(self, workbook: Workbook) -> None:
-        self.starts = [month.absolute for month in workbook.months]
-        self.first_index = workbook.first_month_index
-
-    def index_of(self, absolute: int) -> int:
-        """包含该瞬间的朔望月的全局序号（建元当月为 1，可为负）。"""
-        position = bisect.bisect_right(self.starts, absolute) - 1
-        position = max(0, min(position, len(self.starts) - 1))
-        return self.first_index + position
-
-    def primary_of(self, absolute: int) -> int:
-        """包含该瞬间的元的序号（建元所在元为 1）。"""
-        return (self.index_of(absolute) - 1) // MONTHS_PER_PRIMARY + 1
-
-
-def _fill_primary_relative(axis: MonthAxis, units: list[Unit]) -> None:
+def _fill_primary_relative(workbook: Workbook, units: list[Unit]) -> None:
     """把年表的 `relative` 填成"所属元内的序号"。
 
-    元按朔望月切分（`database/primary.py`）；一个历法年可能跨元，按年首归属。
+    元按**朔望年**切分（1 元 = 129600 朔望年，见 `database/primary.py`）；
+    一个历法年不会跨元，按年首归属。年号用 `source.year_index_of()` 取，
+    建元所在的朔望年为 1。
     """
     counters: dict[int, int] = {}
     for unit in units:
-        order = axis.primary_of(unit.start)
+        order = (year_index_of(workbook, unit.start) - 1) // YEARS_PER_PRIMARY + 1
         counters[order] = counters.get(order, 0) + 1
         unit.relative = counters[order]
 
@@ -413,7 +399,11 @@ def _astronomy_years(workbook: Workbook) -> list[Unit]:
 
 
 def _astronomy_months(workbook: Workbook) -> list[Unit]:
-    """天文纪年的月即朔望月：按年界切分，首尾两个月按年界截断。"""
+    """天文纪年的月即朔望月：按年界切分，首尾两个月按年界截断。
+
+    与 `natural` 同理，`day_count` 取源表的大小月标注；被年界截断的那两个月例外，
+    按实际区间长度计（它们本来就不足一个朔望月）。
+    """
     units: list[Unit] = []
     absolute = 0
     position = 0
@@ -431,8 +421,12 @@ def _astronomy_months(workbook: Workbook) -> list[Unit]:
                 continue
             relative += 1
             absolute += 1
+            whole = start == month.absolute and end == workbook.month_ends[position - 1]
             units.append(
-                Unit(start, end, absolute, relative, month.name, month.ordinal, month.leap)
+                Unit(
+                    start, end, absolute, relative, month.name, month.ordinal, month.leap,
+                    month.length if whole else 0,
+                )
             )
     return units
 
@@ -461,7 +455,11 @@ def _natural_years(workbook: Workbook) -> list[Unit]:
 
 
 def _natural_months(workbook: Workbook) -> list[Unit]:
-    """轩辕纪年的月即朔望月，`absolute` 与 `synodic_month.absolute` 同值。"""
+    """轩辕纪年的月即朔望月，`absolute` 与 `synodic_month.absolute` 同值。
+
+    `day_count` 取源表的大小月标注（大=30 / 小=29），与 `synodic_month.lengthOfDay`
+    保持同值。
+    """
     units: list[Unit] = []
     for _, positions in _natural_grouped(workbook):
         for order, position in enumerate(positions, start=1):
@@ -475,6 +473,7 @@ def _natural_months(workbook: Workbook) -> list[Unit]:
                     month.name,
                     month.ordinal,
                     month.leap,
+                    month.length,
                 )
             )
     return units
@@ -514,7 +513,7 @@ def years(workbook: Workbook, module: str) -> list[Unit]:
     if rule is None:
         raise KeyError(f"没有派生历法 {module}")
     units = rule(workbook)
-    _fill_primary_relative(MonthAxis(workbook), units)
+    _fill_primary_relative(workbook, units)
     return units
 
 
@@ -524,6 +523,25 @@ def months(workbook: Workbook, module: str) -> list[Unit]:
     if rule is None:
         raise KeyError(f"没有派生历法 {module}")
     return rule(workbook)
+
+
+def years_with_months(workbook: Workbook, module: str) -> list[tuple[Unit, int]]:
+    """年 + 该年的月数（即年表的 `lengthOfMonth`），按时间升序。
+
+    `database/chronology.py` 要用它把每部历法的年与月数并进纪年表；
+    年与月都平铺同一条时间轴，双指针走一遍即可，复杂度 O(年 + 月)。
+    """
+    year_units = years(workbook, module)
+    month_units = months(workbook, module)
+    result: list[tuple[Unit, int]] = []
+    position = 0
+    for unit in year_units:
+        count = 0
+        while position < len(month_units) and month_units[position].start <= unit.end:
+            position += 1
+            count += 1
+        result.append((unit, count))
+    return result
 
 
 def stamps(workbook: Workbook) -> set[int]:

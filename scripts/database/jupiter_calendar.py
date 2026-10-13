@@ -1,7 +1,8 @@
 """jupiter.calendar：木星历法。
 
-岁星（木星）纪年（年 + 月）：年长约 11.862 年，年首取木星与太阳同黄经的时刻，需星历表；
-本轮只建表、不写行。
+岁星（木星）纪年（年 + 月）：以岁星约 11.862 年绕天一周为年长，从建元起算；
+换算法则见 `database/calendars.py` 的 `jupiter.calendar` 一项。
+仓库里没有星历表，年长用的是 RULE 给出的**平均**周期。
 
     python scripts/database/jupiter_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

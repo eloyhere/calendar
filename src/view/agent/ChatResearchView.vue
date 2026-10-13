@@ -90,42 +90,31 @@ const opened = computed((): boolean =>
 const finished = computed((): boolean => stages.value.every((state) => state.done));
 
 /** 证据计数的三行：图标、标签、条数。 */
-const tallyRows = computed((): Array<{ mark: Component | null; className: string; label: string; count: number }> => [
-    {
-        mark: resolveIconComponent("CircleCheck"),
-        className: "is-support",
-        label: "支持",
-        count: evidence.value.supporting
-    },
-    {
-        mark: resolveIconComponent("Warning"),
-        className: "is-contradict",
-        label: "反证",
-        count: evidence.value.contradicting
-    },
-    {
-        mark: resolveIconComponent("InfoFilled"),
-        className: "is-neutral",
-        label: "不同出处",
-        count: evidence.value.origins
-    }
-]);
+const tallyRows = computed(
+    (): Array<{ mark: Component | null; className: string; label: string; count: number }> => [
+        {
+            mark: resolveIconComponent("CircleCheck"),
+            className: "is-support",
+            label: "支持",
+            count: evidence.value.supporting
+        },
+        {
+            mark: resolveIconComponent("Warning"),
+            className: "is-contradict",
+            label: "反证",
+            count: evidence.value.contradicting
+        },
+        {
+            mark: resolveIconComponent("InfoFilled"),
+            className: "is-neutral",
+            label: "不同出处",
+            count: evidence.value.origins
+        }
+    ]
+);
 
 /** 自检题左侧的图标：未展开时是问号，展开后换成勾（见模板里的三元）。 */
 const checkIcon = computed((): Component | null => resolveIconComponent("QuestionFilled"));
-
-/** 自检题的展开状态：id -> 是否已展开。 */
-const revealed = ref<Record<string, boolean>>({});
-
-/** 已展开依据的自检题数。 */
-const revealedCount = computed((): number =>
-    SelfChecks.filter((item: ResearchSelfCheck): boolean => revealed.value[item.id] === true).length
-);
-
-/** 展开 / 收起一条自检题的依据。 */
-function toggleRevealed(id: string): void {
-    revealed.value = { ...revealed.value, [id]: !revealed.value[id] };
-}
 
 /**
  * 去重后的出处清单，供右栏快速核对。
@@ -167,7 +156,7 @@ function stepStatus(index: number): "wait" | "process" | "finish" {
 function stageNote(index: number): string {
     const state = stages.value[index];
 
-    return state?.done ? state.stage.delivers : state?.stage.criterion ?? "";
+    return state?.done ? state.stage.delivers : (state?.stage.criterion ?? "");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -249,7 +238,8 @@ const SelfChecks: readonly ResearchSelfCheck[] = [
     {
         id: "which-source",
         question: "这个结论的第二条独立出处是什么？",
-        evidence: "`src/sql/climate.sql`（查询语句）与 `docs/design.md` §2（口径）是两个不同来源；同一份文档引三次只算一处"
+        evidence:
+            "`src/sql/climate.sql`（查询语句）与 `docs/design.md` §2（口径）是两个不同来源；同一份文档引三次只算一处"
     },
     {
         id: "what-breaks",
@@ -262,6 +252,26 @@ const SelfChecks: readonly ResearchSelfCheck[] = [
         evidence: "见「资料边界」：原典、七张零行的表、以及实时天文观测数据都不在范围内"
     }
 ];
+
+/**
+ * 自检题的展开状态：id -> 是否已展开。
+ *
+ * 初始全部收起——**依据默认不可见**是这一栏的全部意义。默认展开的话，
+ * 自检题会退化成又一段正文，只是排版上换了个壳。
+ */
+const revealed = ref<Record<string, boolean>>({});
+
+/** 已展开依据的自检题数。 */
+const revealedCount = computed(
+    (): number =>
+        SelfChecks.filter((item: ResearchSelfCheck): boolean => revealed.value[item.id] === true)
+            .length
+);
+
+/** 展开 / 收起一条自检题的依据。 */
+function toggleRevealed(id: string): void {
+    revealed.value = { ...revealed.value, [id]: !revealed.value[id] };
+}
 
 /**
  * 读完这一页值得记住的三件事。
@@ -285,6 +295,30 @@ const Sources = [
     { title: "节气查询语句", source: "src/sql/climate.sql", note: "节气与物候的时刻查询" },
     { title: "朔望月原始历表", source: "calendar.xlsx", note: "24 个工作表，交节与合朔的原始值" }
 ] as const;
+
+/* -------------------------------------------------------------------------- */
+/* 右栏分组                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 右栏的四组内容，读的时候分别在问什么：
+ *
+ * 1. **进度**——现在到哪了、我该按什么深浅问（提问之前看）；
+ * 2. **证据**——结论靠什么撑着、什么能推翻它（读结论时看）；
+ * 3. **边界**——哪些查不到、哪些还没定论（判断"能不能信"时看）；
+ * 4. **自检**——读完之后我自己还答不上什么（读完看）。
+ *
+ * ## 为什么是四块平铺而不是四个标签页
+ *
+ * `ChatContextPanel` 支持一种分组形态（传了 `tabs` 就把插槽内容按具名插槽装进
+ * `ElTabs`，见那个组件的说明），本页原本也登记过一份分组表，但**模板里始终没有
+ * 对应的 `<template #进度>` 之类**，于是那份登记是一段死代码：类型检查报
+ * 「声明未使用」，而四块内容其实一直走的是默认插槽的散装形态。
+ *
+ * 现在保留散装形态，并把死代码删掉。要改成分组时，两件事必须一起做：
+ * ① 这里补回分组表，② 模板里的四块 `<section>` 各自包进 `<template #进度>`；
+ * 只做前半件，右栏会变成四个空标签页——比死代码更糟。
+ */
 </script>
 
 <template>
@@ -331,7 +365,8 @@ const Sources = [
                 进度按**环节**计，不折算百分比：研究耗时不可预知，走得不线性的进度条
                 会被读成「卡住了」。当前环节：<strong>{{
                     activeStage?.stage.name ?? "四步已走完"
-                }}</strong>。
+                }}</strong
+                >。
             </p>
 
             <p v-if="!opened" class="xy-note">
@@ -364,7 +399,8 @@ const Sources = [
             <p class="xy-note">
                 这一档需要的材料：<strong>{{
                     chat.depths.value.find((item) => item.id === chat.depth.value)?.needs
-                }}</strong>。深度选择目前**没有传给检索任务**——它只影响你怎么描述问题。
+                }}</strong
+                >。深度选择目前**没有传给检索任务**——它只影响你怎么描述问题。
             </p>
         </section>
 
@@ -375,7 +411,11 @@ const Sources = [
                 <ElTag v-if="evidence.origins >= 2" type="success" size="small" effect="plain">
                     已交叉验证
                 </ElTag>
-                <ElTag v-else-if="evidence.citations > 0" type="warning" size="small" effect="plain">
+                <ElTag
+                    v-else-if="evidence.citations > 0"
+                    type="warning"
+                    size="small"
+                    effect="plain">
                     单源
                 </ElTag>
                 <ElTag v-else type="info" size="small" effect="plain">尚未取数</ElTag>

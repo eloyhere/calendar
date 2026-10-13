@@ -12,26 +12,49 @@
  * `ElInput` 的 `keydown` 里判断 `event.isComposing` 是必须的：中文输入法选词时
  * 按 Enter 会先触发一次 `keydown`，不拦住就会把半个词发出去。
  *
- * ## 为什么按钮文案随状态变
+ * ## 为什么草稿走 `update:draft` 而不是直接写 `chat.draft`
  *
- * 等回复时按钮变"停止"，点了清掉未落地的占位回复。这一版没有真正的流式生成可停，
- * 但按钮的位置与语义先立住——加流式时只改 `use-chat-page.ts` 里的定时器。
+ * 草稿的持有者是页面（`useChatPage` 的 `draft`），本组件只是它的一个输入口。
+ * 直接写 `props.chat.draft.value` 能跑通，但 `vue/no-mutating-props` 会报错——
+ * 而且报得对：子组件改父级状态，出问题时无从判断是谁改的。所以按 Vue 的双向绑定
+ * 约定来：`modelValue` 式的 `draft` + `update:draft` 事件，由页面落笔。
  */
 
 import { computed, ref } from "vue";
 import { Promotion } from "@element-plus/icons-vue";
 
-import type { ChatPageApi } from "../../../state/use-chat-page";
+import type { ChatSessionApi } from "../../../state/use-chat-session";
 
 interface Props {
-    /** `useChatPage()` 的返回值 */
-    chat: ChatPageApi;
+    /**
+     * 会话状态。
+     *
+     * 与 `ChatMessageList` 同理取 `ChatSessionApi` 而不是 `ChatPageApi`：
+     * 输入区只用草稿、可否发送、在等回复这三样，而那三样对话页与助手抽屉都有。
+     */
+    chat: ChatSessionApi;
 }
 
 const props = defineProps<Props>();
 
+const emit = defineEmits<{
+    /** 草稿变化；由页面的 `chat.draft` 落笔 */
+    "update:draft": [text: string];
+}>();
+
 /** Enter 发送；关掉则 Enter 换行、Ctrl / Cmd + Enter 发送。 */
 const enterToSend = ref(true);
+
+/**
+ * 草稿的读写桥。
+ *
+ * 读走 props（页面持有真值），写走事件（页面负责落笔）——这样输入框既不会与页面
+ * 的状态脱节，也不会有第二份真值。
+ */
+const draft = computed({
+    get: (): string => props.chat.draft.value,
+    set: (text: string): void => emit("update:draft", text)
+});
 
 /** 等回复时的提示文案。 */
 const hint = computed((): string =>
@@ -63,7 +86,7 @@ function onKeydown(event: Event | KeyboardEvent): void {
 <template>
     <div class="chat-composer">
         <ElInput
-            v-model="props.chat.draft.value"
+            v-model="draft"
             type="textarea"
             :rows="3"
             resize="none"

@@ -1,5 +1,13 @@
 /**
- * 对话 store：六个聊天模式共用的一份会话内存。
+ * 对话 store：五个聊天模式共用的一份会话，**带本地历史缓存**。
+ *
+ * ## 三件事
+ *
+ * 1. **持有状态**：会话、消息、每个模式当前打开的会话；
+ * 2. **分组**：每个模式只看自己的会话（`sessionsOf`），互不串场——数据调研里贴过的
+ *    查询口径不该出现在深度研究的左栏里；
+ * 3. **缓存**：每次改动都落到 `localStorage`（经由 `src/store/chat.cache.ts`），
+ *    刷新与重启之后历史还在。启动时**先读缓存，读不到才铺演示数据**。
  *
  * ## 为什么不是 `defineEntityStore`
  *
@@ -10,23 +18,22 @@
  * - 没有表（见 `src/entity/chat.ts` 的说明），没有 service / repository 可解析；
  * - 会话是**运行期写出来的**——用户发的每一条都要立刻进状态。
  *
- * 硬套那个工厂会得到一堆用不上的缓存语义，还得先编一个假的 service。
- * 所以本 store 是普通 Pinia setup store，只做三件事：持有会话与消息、
- * 按模式分组、提供增删改选。等对话的持久化方案定下来，**改动只落在本文件**：
- * 把 `ensureSeeded()` 换成 `await load()`，再给 `createSession()` 之类补一次
- * 落库调用即可，页面与组件不用动。
+ * 它的缓存语义在这里也用不上：对话要的不是"读过就别再读"，而是"改过就别丢"。
+ * 所以本 store 是普通 Pinia setup store，缓存由 `chat.cache.ts` 提供，且是
+ * **写入式**的（写状态即写缓存），不设 TTL、不设失效钩子。
  *
  * ## 为什么状态挂在 store 而不是页面里
  *
- * 六个模式页是六条路由，来回切换会**卸载再重建**组件。会话状态若放在页面的
+ * 五个模式页是五条路由，来回切换会**卸载再重建**组件。会话状态若放在页面的
  * `ref` 里，切走再切回就全没了——而"接着上次说"正是对话页最基本的行为。
- * Pinia 的 store 活在应用级，所以切换路由不丢。
+ * 加上缓存之后，这一条从"切路由不丢"扩展到"关掉应用也不丢"。
  *
- * ## 分模式隔离
+ * ## 两个模式之外的状态
  *
- * 每个模式有自己的会话列表（`sessionsOf`），互不串场：数据调研里贴过的查询口径
- * 不该出现在深度研究的左栏里。`activeIds` 也按模式各记一个，切回某个模式时
- * 停在它上次打开的那条会话上。
+ * - `hydrated`：是否已经把缓存读进来过。**每次进入对话页都会调 `ensureReady()`**，
+ *   它必须只生效一次，否则用户新建的会话会被下一次读缓存覆盖掉；
+ * - `lastWrite`：最近一次落盘的结果。写失败（配额满、隐私模式）不抛错、不打断
+ *   对话，但要在界面上看得出来——不然"历史又没了"没法解释。
  *
  * ## 状态为什么长这样（一次踩坑记录）
  *
@@ -47,7 +54,7 @@
  * 既不经过 `UnwrapRef`，也不是"给常量赋值"。
  */
 
-import { computed, ref, shallowRef } from "vue";
+import { computed, onScopeDispose, ref, shallowRef } from "vue";
 import { defineStore } from "pinia";
 
 import type {
@@ -60,6 +67,43 @@ import type {
     ChatTodo
 } from "../entity/chat";
 import { titleOf } from "../entity/chat";
+import type { ChatCacheStats, ChatCacheWrite } from "./chat.cache";
+import {
+    capChannel,
+    chatCacheStats,
+    clearChatCache,
+    readChatCache,
+    writeChatCache
+} from "./chat.cache";
+
+/* -------------------------------------------------------------------------- */
+/* 常量                                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 五个模式的清单。
+ *
+ * 缓存读写、按模式分组、`activeIds` 的键都要用它，所以在这里显式列一份。
+ * 类型上它必须与 `ChatChannel` 完全一致——`satisfies` 会在少一个或多一个时直接报错。
+ */
+const Channels = [
+    "create",
+    "research",
+    "survey",
+    "thought",
+    "topic"
+] as const satisfies readonly ChatChannel[];
+
+/**
+ * 落盘防抖时长（毫秒）。
+ *
+ * 一次发送会产生两次状态改动（用户发言入列、回复落地），流式接入后更是每个分片
+ * 一次。逐次 `JSON.stringify` 整个快照是纯浪费，所以要合并。取 400：短到用户
+ * 关窗口前基本一定写完，长到能把一段连续操作并成一次。
+ *
+ * `onScopeDispose` 里会强制落盘，所以"关掉窗口"不会丢掉最后一次改动。
+ */
+const PersistDelay = 400;
 
 /* -------------------------------------------------------------------------- */
 /* 状态形状                                                                    */
@@ -118,19 +162,19 @@ function message(
 /**
  * 铺一批演示会话。
  *
- * 刻意铺在三个模式里（新建 / 历史 / 深度研究），这样左栏、消息流、引用与提纲
- * 四种渲染分支一进应用就都看得到；数据调研、思维碰撞、课题研究留空，
- * 用来展示各自的空态。真接上数据层后，这个函数与 `ensureSeeded()` 一并删掉。
+ * 刻意铺在两个模式里（新建 / 深度研究），这样左栏与消息流一进应用就有内容可看，
+ * 引用分支也看得到；数据调研、思维碰撞、课题研究留空，用来展示各自的空态
+ * （`todo` 提纲分支要发一条消息才出现，见 `use-chat-page.ts` 的 `stubKind`）。
+ *
+ * **只在缓存为空时铺**（见 `ensureReady()`）：用过一次之后历史从缓存里读，
+ * 演示数据不再出现。清空缓存后会重新铺一次，这对"第一次打开应用"是合适的。
  */
 function seedDemoSessions(): { sessions: ChatSession[]; messages: Record<string, ChatMessage[]> } {
     const sessions: ChatSession[] = [];
     const messages: Record<string, ChatMessage[]> = {};
 
     /** 把一组发言装进一条会话，省掉每处重复的 push。 */
-    function pack(
-        session: Omit<ChatSession, "messageCount">,
-        lines: Array<ChatMessage>
-    ): void {
+    function pack(session: Omit<ChatSession, "messageCount">, lines: Array<ChatMessage>): void {
         messages[session.id] = lines;
         sessions.push({ ...session, messageCount: lines.length });
     }
@@ -170,97 +214,6 @@ function seedDemoSessions(): { sessions: ChatSession[]; messages: Record<string,
         ]
     );
 
-    /* ── 历史对话：一条带引用与提纲的长会话 ──────────────────────────────── */
-
-    const historyId = crypto.randomUUID();
-    pack(
-        {
-            id: historyId,
-            channel: "history",
-            title: "节气与农历月的咬合",
-            summary: "定朔、定气与无中气置闰",
-            status: "idle",
-            createdAt: seededAt - 27 * 60 * Minute,
-            updatedAt: seededAt - 9 * 60 * Minute + 45_000
-        },
-        [
-            message(historyId, "user", "节气和农历月是两套东西吗？", {
-                time: seededAt - 27 * 60 * Minute
-            }),
-            message(
-                historyId,
-                "assistant",
-                '是两套，但通过"中气"咬合在一起。\n\n节气按**太阳视黄经每 15°** 定（定气），是天文量；农历月按**合朔**定月首（定朔），是月相量。两者的周期（回归年 365.2422 日、朔望月 29.5306 日）不可通约，所以必须有一条规则把月份序列与节气序列对齐——那条规则就是"**中气落在哪个月，就定这个月是几月；没有中气的月为闰月**"。',
-                { time: seededAt - 27 * 60 * Minute + 50_000 }
-            ),
-            message(historyId, "assistant", "顺着这条线，接下来要核三件事：", {
-                kind: "todo",
-                todos: [
-                    { text: "定朔与定气的分歧起点（平气 → 定气）", done: true },
-                    { text: "ΔT 在远古段的量级与折成黄经的度数", done: true },
-                    { text: "建元 -2696-03-11 的文献依据", done: false }
-                ],
-                time: seededAt - 27 * 60 * Minute + 55_000
-            }),
-            message(
-                historyId,
-                "assistant",
-                "定气的行用自 1645 年《时宪历》起（此前是平气）。本库跨公历 -9999 … 13500，**改历前后的节气时刻不能按同一套算法反推**。",
-                { kind: "note", time: seededAt - 26 * 60 * Minute }
-            ),
-            message(historyId, "user", "那闰月是怎么统计出来的？", {
-                time: seededAt - 9 * 60 * Minute
-            }),
-            message(
-                historyId,
-                "assistant",
-                "按 `synodic_month` 表逐月判定：一个朔望月内若不含任何中气，该月即闰月。全库 290,654 条朔望月里，闰月与闰年都由这条规则现算，不另存字段。",
-                {
-                    kind: "citation",
-                    citations: [
-                        {
-                            title: "数据来源与历史分期",
-                            source: "docs/design.md §1.2",
-                            note: "定气自 1645 年《时宪历》起行用"
-                        },
-                        {
-                            title: "朔望月与月相",
-                            source: "src/sql/synodic.sql",
-                            note: "朔望月的查询语句"
-                        }
-                    ],
-                    time: seededAt - 9 * 60 * Minute + 45_000
-                }
-            )
-        ]
-    );
-
-    /* ── 历史对话：一条更早的会话，左栏才有"倒序"可看 ────────────────────── */
-
-    const olderId = crypto.randomUUID();
-    pack(
-        {
-            id: olderId,
-            channel: "history",
-            title: "跨库关联怎么记",
-            summary: "不施外键，靠三处注释与合并库",
-            status: "idle",
-            createdAt: seededAt - 3 * 24 * 60 * Minute,
-            updatedAt: seededAt - 3 * 24 * 60 * Minute + 60_000
-        },
-        [
-            message(olderId, "user", "22 个分库怎么保证跨库关联不断？", {
-                time: seededAt - 3 * 24 * 60 * Minute
-            }),
-            message(
-                olderId,
-                "assistant",
-                "SQLite 不支持跨文件外键，所以各分库之间**不施加外键约束**，关联只记在三处：`docs/design.md` 的表格、各 `src/sql/<entity>.sql` 的表头注释、以及 `database/sql/<entity>/table.sql` 的表头注释。要跨实体查数时，用 `database/combine.py` 把分库合成全库 `src/sqlite/calendar.sqlite`（派生产物，可随时重建）。",
-                { time: seededAt - 3 * 24 * 60 * Minute + 60_000 }
-            )
-        ]
-    );
-
     /* ── 深度研究：一条问了一句的会话 ────────────────────────────────────── */
 
     const researchId = crypto.randomUUID();
@@ -282,7 +235,35 @@ function seedDemoSessions(): { sessions: ChatSession[]; messages: Record<string,
                 researchId,
                 "assistant",
                 '因为它的量级足以改变结论。本库跨公历 -9999 … 13500，远古段 ΔT（TT − UT）可达数万秒，折成太阳黄经约数度——**足以让一次交节落在前一天**。节气时刻直接决定"这个月有没有中气"，也就直接决定闰月的位置，所以 ΔT 不是显示层的修饰，而是参与判定的量。',
-                { time: seededAt - 40 * Minute + 70_000 }
+                {
+                    // 三条**刻意取两种立场**：两条支持、一条反证。深度研究页的
+                    // 「证据」面板按立场分开计数，只给同向材料的话反证那一行永远是零，
+                    // 页面会显得缺一半——而真实研究里"找到了反证"本身就是要写出来的结论。
+                    citations: [
+                        {
+                            title: "时间坐标系与建元",
+                            source: "docs/design.md §2",
+                            note: "absolute 为全表统一的时间主键；交节时刻决定「有无中气」",
+                            stance: "support",
+                            confidence: "high"
+                        },
+                        {
+                            title: "节气表与物候",
+                            source: "src/sql/climate.sql",
+                            note: "节气、物候的时刻查询语句，交节时刻取自这里",
+                            stance: "support",
+                            confidence: "high"
+                        },
+                        {
+                            title: "朔望月原始历表",
+                            source: "calendar.xlsx",
+                            note: "远古段只覆盖到 -9999，1912 年前 ΔT 的取值本身仍按外推，没有第二条来源可比对",
+                            stance: "contradict",
+                            confidence: "low"
+                        }
+                    ],
+                    time: seededAt - 40 * Minute + 70_000
+                }
             )
         ]
     );
@@ -305,8 +286,225 @@ export const useChatStore = defineStore("chat", () => {
         activeIds: {}
     });
 
-    /** 是否已铺过演示数据。 */
-    const seeded = ref(false);
+    /** 是否已经把缓存读进来过（读过一次就不再读，免得覆盖用户刚建的会话）。 */
+    const hydrated = ref(false);
+
+    /** 本地缓存里有没有历史（启动时读到的、或刚刚写下去的）。 */
+    const cached = ref(false);
+
+    /** 最近一次落盘的结果；还没写过时为 `null`。 */
+    const lastWrite = ref<ChatCacheWrite | null>(null);
+
+    /** 落盘防抖句柄。 */
+    let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * 把当前状态投影成缓存分片，顺带按保留上限淘汰。
+     *
+     * 淘汰在**写**的时候做，不在读的时候做：读路径只负责还原，多一步判断就多一处
+     * 出错的地方；而写在一次会话里只发生几次，代价可以忽略。
+     */
+    function snapshot(): Partial<Record<ChatChannel, { sessions: ChatSession[]; messages: Record<string, ChatMessage[]> }>> {
+        const bag: Partial<
+            Record<ChatChannel, { sessions: ChatSession[]; messages: Record<string, ChatMessage[]> }>
+        > = {};
+
+        for (const channel of Channels) {
+            const sessions = state.value.sessions.filter(
+                (session: ChatSession): boolean => session.channel === channel
+            );
+            if (sessions.length === 0) {
+                continue;
+            }
+            const messages: Record<string, ChatMessage[]> = {};
+            for (const session of sessions) {
+                messages[session.id] = state.value.messages[session.id] ?? [];
+            }
+            bag[channel] = capChannel({ sessions, messages });
+        }
+
+        return bag;
+    }
+
+    /**
+     * 立刻落盘（不等防抖）。
+     *
+     * 三个入口：`persist()` 的定时器到点、组件作用域销毁、用户点「清空缓存」之后。
+     */
+    function flush(): void {
+        if (persistTimer !== null) {
+            clearTimeout(persistTimer);
+            persistTimer = null;
+        }
+
+        const result = writeChatCache({
+            version: 1,
+            savedAt: Date.now(),
+            channels: snapshot(),
+            activeIds: state.value.activeIds
+        });
+
+        lastWrite.value = result;
+        cached.value = result.ok || cached.value;
+    }
+
+    /** 安排一次落盘；连续改动合并成一次写。 */
+    function persist(): void {
+        if (persistTimer !== null) {
+            clearTimeout(persistTimer);
+        }
+        persistTimer = setTimeout(flush, PersistDelay);
+    }
+
+    /**
+     * 丢掉缓存里超限的部分。
+     *
+     * `capChannel()` 已经在写的时候限过额，所以这一步通常是空操作；留着它是为了
+     * 处理另一种情况：**缓存是旧版本写的**（那时上限更宽），读进来之后要就地瘦身，
+     * 否则一个启动周期内内存里一直顶着一份超限的历史。
+     */
+    function prune(): void {
+        const next: Partial<Record<ChatChannel, boolean>> = {};
+        let changed = false;
+        const sessions: ChatSession[] = [];
+        const messages: Record<string, ChatMessage[]> = { ...state.value.messages };
+
+        for (const channel of Channels) {
+            const own = state.value.sessions.filter(
+                (session: ChatSession): boolean => session.channel === channel
+            );
+            const messagesOfChannel: Record<string, ChatMessage[]> = {};
+            for (const session of own) {
+                messagesOfChannel[session.id] = state.value.messages[session.id] ?? [];
+            }
+            const capped = capChannel({ sessions: own, messages: messagesOfChannel });
+            next[channel] = true;
+            if (capped.sessions.length !== own.length) {
+                changed = true;
+                for (const session of own) {
+                    if (!capped.messages[session.id] && capped.sessions.every((one) => one.id !== session.id)) {
+                        delete messages[session.id];
+                    }
+                }
+            }
+            sessions.push(...capped.sessions);
+        }
+
+        if (changed) {
+            state.value = { ...state.value, sessions, messages };
+        }
+    }
+
+    /**
+     * 读缓存并还原状态；已经在内存里的会话不会被覆盖。
+     *
+     * **合并而不是替换**：`ensureReady()` 每次进对话页都会调一次，若第二次进来时
+     * 直接把缓存盖上去，用户这一轮新建的会话就没了。合并规则按 id 去重，内存里的
+     * 版本优先（它更新）。
+     */
+    function restore(): void {
+        const { payload, status } = readChatCache(Channels);
+
+        if (status === "corrupt") {
+            // 存过但坏了：说一句就够，页面上按"没有历史"处理
+            console.warn("[chat.store] 对话缓存无法解析，已忽略；下一次写入会覆盖它");
+            clearChatCache();
+            return;
+        }
+        if (payload === null) {
+            return;
+        }
+
+        const sessions = [...state.value.sessions];
+        const messages = { ...state.value.messages };
+        const known = new Set(sessions.map((session) => session.id));
+
+        for (const channel of Channels) {
+            const piece = payload.channels[channel];
+            if (piece === undefined) {
+                continue;
+            }
+            for (const session of piece.sessions) {
+                if (known.has(session.id)) {
+                    continue;
+                }
+                known.add(session.id);
+                sessions.push(session);
+                messages[session.id] = piece.messages[session.id] ?? [];
+            }
+        }
+
+        /**
+         * `replying` 一律归零。
+         *
+         * 这个状态表示"正在等一条回复"，而回复只活在进程内存里（是个定时器）。
+         * 上次关窗口时没落地的回复，这次启动永远不会来——留着它，输入框会被
+         * 永久禁用（`sendable` 看的就是它）。**这是缓存必须做的一步规整。**
+         */
+        const activeIds = { ...payload.activeIds, ...state.value.activeIds };
+        state.value = {
+            sessions: sessions.map((session: ChatSession): ChatSession =>
+                session.status === "replying" ? { ...session, status: "idle" } : session
+            ),
+            messages,
+            activeIds
+        };
+        cached.value = true;
+        prune();
+    }
+
+    /**
+     * 准备就绪：先读缓存，读不到才铺演示数据。
+     *
+     * 这是**唯一的入口**，由 `useChatPage()` 在装配时调用。它必须幂等：第二次进来
+     * 只做一次 `restore()` 的判断就返回，不重复铺演示数据，也不覆盖用户的新会话。
+     */
+    function ensureReady(): void {
+        if (hydrated.value) {
+            return;
+        }
+        hydrated.value = true;
+
+        restore();
+        if (state.value.sessions.length === 0) {
+            seedDemo();
+        }
+    }
+
+    /** 铺演示数据并把每个模式的当前会话定到最近一条。 */
+    function seedDemo(): void {
+        const demo = seedDemoSessions();
+        const activeIds: Partial<Record<ChatChannel, string | null>> = { ...state.value.activeIds };
+        for (const session of demo.sessions) {
+            if (activeIds[session.channel] === undefined) {
+                activeIds[session.channel] = session.id;
+            }
+        }
+        state.value = { sessions: demo.sessions, messages: demo.messages, activeIds };
+        persist();
+    }
+
+    /**
+     * 清空历史缓存与内存里的全部会话。
+     *
+     * 先 `clearChatCache()` 再改状态：反过来的话，改状态触发的防抖写入会立刻把
+     * 刚清掉的东西又存回去。
+     */
+    function clearHistory(): void {
+        clearChatCache();
+        if (persistTimer !== null) {
+            clearTimeout(persistTimer);
+            persistTimer = null;
+        }
+        state.value = { sessions: [], messages: {}, activeIds: {} };
+        cached.value = false;
+        lastWrite.value = null;
+    }
+
+    /** 缓存规模；右栏展示用。 */
+    function stats(): ChatCacheStats {
+        return chatCacheStats(Channels);
+    }
 
     /** 某个模式的会话，按最后活动时间倒序。 */
     function sessionsOf(channel: ChatChannel): ChatSession[] {
@@ -335,29 +533,8 @@ export const useChatStore = defineStore("chat", () => {
     }
 
     /**
-     * 铺演示数据；已经铺过就什么都不做。
-     *
-     * 由页面在装配时调用，而不是在 store 定义里直接铺：store 的 setup 在第一次
-     * `useChatStore()` 时执行，那时若直接写状态，"以后换成从库里读"就会变成一次
-     * 异步改造。留一个显式的入口，将来把这里换成 `await load()` 即可。
+     * 新建一条空会话并设为当前；返回它。
      */
-    function ensureSeeded(): void {
-        if (seeded.value) {
-            return;
-        }
-        const demo = seedDemoSessions();
-        const activeIds: Partial<Record<ChatChannel, string | null>> = {};
-        // 演示数据里每个模式"最近聊过"的那条即当前会话，页面一进来就有内容可看
-        for (const session of demo.sessions) {
-            if (activeIds[session.channel] === undefined) {
-                activeIds[session.channel] = session.id;
-            }
-        }
-        state.value = { sessions: demo.sessions, messages: demo.messages, activeIds };
-        seeded.value = true;
-    }
-
-    /** 新建一条空会话并设为当前；返回它。 */
     function createSession(channel: ChatChannel, seed = "新对话"): ChatSession {
         const now = Date.now();
         const session: ChatSession = {
@@ -375,16 +552,22 @@ export const useChatStore = defineStore("chat", () => {
             messages: { ...state.value.messages, [session.id]: [] },
             activeIds: { ...state.value.activeIds, [channel]: session.id }
         };
+        persist();
 
         return session;
     }
 
-    /** 打开一条会话；`null` 表示退到空会话（不新建）。 */
+    /**
+     * 打开一条会话；`null` 表示退到空会话（不新建）。
+     *
+     * 也要落盘：`activeIds` 是缓存的一部分，"上次停在哪条会话"重启后要能接着停在那儿。
+     */
     function selectSession(channel: ChatChannel, id: string | null): void {
         state.value = {
             ...state.value,
             activeIds: { ...state.value.activeIds, [channel]: id }
         };
+        persist();
     }
 
     /** 删除一条会话；删的是当前会话时，回到该模式最近的一条。 */
@@ -402,7 +585,8 @@ export const useChatStore = defineStore("chat", () => {
         const activeIds = { ...state.value.activeIds };
         if (activeIds[target.channel] === id) {
             const rest = state.value.sessions.filter(
-                (session: ChatSession): boolean => session.id !== id && session.channel === target.channel
+                (session: ChatSession): boolean =>
+                    session.id !== id && session.channel === target.channel
             );
             const next = rest.sort(
                 (left: ChatSession, right: ChatSession): number => right.updatedAt - left.updatedAt
@@ -417,17 +601,18 @@ export const useChatStore = defineStore("chat", () => {
             messages,
             activeIds
         };
+        persist();
     }
 
     /** 重命名一条会话。 */
     function renameSession(id: string, title: string): void {
         state.value = {
             ...state.value,
-            sessions: state.value.sessions.map(
-                (session: ChatSession): ChatSession =>
-                    session.id === id ? { ...session, title } : session
+            sessions: state.value.sessions.map((session: ChatSession): ChatSession =>
+                session.id === id ? { ...session, title } : session
             )
         };
+        persist();
     }
 
     /**
@@ -473,19 +658,26 @@ export const useChatStore = defineStore("chat", () => {
                 };
             })
         };
+        persist();
 
         return entry;
     }
 
-    /** 改会话状态（发送时置"正在回复"，占位回复落地后清掉）。 */
+    /**
+     * 改会话状态（发送时置"正在回复"，占位回复落地后清掉）。
+     *
+     * 也要落盘，而且**下一次读缓存时会被强制归零**（见 `restore()`）：这个状态
+     * 依赖一个内存里的定时器，重启后不可能恢复。写它只是为了同一进程内切路由时
+     * 三点动画不丢。
+     */
     function setStatus(id: string, status: ChatSessionStatus): void {
         state.value = {
             ...state.value,
-            sessions: state.value.sessions.map(
-                (session: ChatSession): ChatSession =>
-                    session.id === id ? { ...session, status } : session
+            sessions: state.value.sessions.map((session: ChatSession): ChatSession =>
+                session.id === id ? { ...session, status } : session
             )
         };
+        persist();
     }
 
     /** 会话总数。 */
@@ -499,15 +691,29 @@ export const useChatStore = defineStore("chat", () => {
         )
     );
 
+    /**
+     * 作用域销毁时强制落盘。
+     *
+     * 防抖意味着最后一次改动可能还等在定时器里；Pinia 的 setup store 建在应用级的
+     * effectScope 上，这个钩子在窗口关掉时执行。`flush()` 本身不抛错
+     * （写失败只记进 `lastWrite`），所以这里不需要再包一层。
+     */
+    onScopeDispose(flush);
+
     return {
         state,
-        seeded,
+        hydrated,
+        cached,
+        lastWrite,
         total,
         messageTotal,
         sessionsOf,
         messagesOf,
         activeOf,
-        ensureSeeded,
+        ensureReady,
+        clearHistory,
+        stats,
+        flush,
         createSession,
         selectSession,
         removeSession,

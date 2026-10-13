@@ -1,7 +1,7 @@
 """gregory.calendar：格里高利历。
 
-proleptic 格里高利历（年 + 月）：可由 `temporal` 的 year/month/day 展开，闰年 366 天、平年 365 天；
-本轮只建表、不写行。
+proleptic 格里高利历（年 + 月）：年界 1 月 1 日、月界各月 1 日，闰年 366 天、平年 365 天；
+换算法则见 `database/calendars.py` 的 `gregory.calendar` 一项。
 
     python scripts/database/gregory_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

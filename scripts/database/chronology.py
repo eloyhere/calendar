@@ -1,6 +1,6 @@
 """chronology：纪年。
 
-纪年：一个朔望年一条，`epoch` 取该年首所属的世（1 世 = 30 朔望月），
+纪年：一个朔望年一条，`epoch` 取该年所属的世（1 世 = 30 朔望年），
 `synodic` 指向该朔望年，`lengthOfSynodicMonth` 记该年的月数（12 / 13）。
 
     python scripts/database/chronology.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]

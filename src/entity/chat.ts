@@ -5,7 +5,7 @@
  *
  * 会话与消息要被**三处**同时读到：
  *
- * 1. 六个模式页（新建 / 历史 / 深度研究 / 数据调研 / 思维碰撞 / 课题研究）；
+ * 1. 五个模式页（新建 / 深度研究 / 数据调研 / 思维碰撞 / 课题研究）；
  * 2. 左侧会话列表与中间消息流（两个组件，分处不同文件）；
  * 3. store——它要在模式之间共享同一份数据。
  *
@@ -31,19 +31,13 @@ import type { CitationConfidence, CitationStance } from "./research";
 /* -------------------------------------------------------------------------- */
 
 /**
- * 六个聊天模式。与路由表 `plugin/router.ts` 里的六条子路由一一对应。
+ * 五个聊天模式。与路由表 `plugin/router.ts` 里的五条子路由一一对应。
  *
  * 做成联合类型而不是 `string`：模式是会话的**归属键**，写错一个字母就会让某条
  * 会话在任何页面上都查不到（列表空白，且不报错）。收成字面量联合后，`vue-tsc`
  * 会在赋值点直接报出来。
  */
-export type ChatChannel =
-    | "create"
-    | "history"
-    | "research"
-    | "survey"
-    | "thought"
-    | "topic";
+export type ChatChannel = "create" | "research" | "survey" | "thought" | "topic";
 
 /** 模式的静态说明：标题、图标、占位文案、开场白。 */
 export interface ChatChannelInfo {
@@ -60,10 +54,10 @@ export interface ChatChannelInfo {
 }
 
 /**
- * 六个模式的登记表。
+ * 五个模式的登记表。
  *
  * **这是模式的唯一来源**：页面标题、图标、占位文案、开场白全部取自这里，
- * 六个模式页因此只描述"我这一页比共用壳多了什么"，不再重复这些字段。
+ * 五个模式页因此只描述"我这一页比共用壳多了什么"，不再重复这些字段。
  *
  * 键的顺序即菜单顺序（与路由表一致）。
  */
@@ -78,13 +72,6 @@ export const ChatChannels: Record<ChatChannel, ChatChannelInfo> = {
             "列出 22 个分库与各自的表",
             "这条链路里 entity 与 store 的分工是什么"
         ]
-    },
-    history: {
-        title: "历史对话",
-        icon: "Clock",
-        description: "检索、继续或清理此前的会话",
-        placeholder: "接着上次的话题说……",
-        starters: ["上次聊到哪了", "把上周那条会话接着说完", "清理三个月前的会话"]
     },
     research: {
         title: "深度研究",
@@ -174,7 +161,7 @@ export type ChatMessageKind = "text" | "note" | "citation" | "todo";
  *    （哪一段用平气、哪一段用定气），只给一处出处的材料本就只能算中等置信。
  *    所以 `confidence` 三档必写在卡片上，缺省按"中"计。
  *
- * 两个字段都可选：历史对话、课题研究里的引用是"顺着这条线可以去哪儿看"，
+ * 两个字段都可选：课题研究里的引用是"顺着这条线可以去哪儿看"，
  * 不是待评估的证据，那时不标立场是恰当的。
  *
  * 形状本身（`CitationStance` / `CitationConfidence` 的取值与文案）归
@@ -275,7 +262,8 @@ export const SessionTitleLength = 18;
  * 左栏会被撑得忽高忽低。
  */
 export function titleOf(text: string): string {
-    const firstLine = text.split("\n").find((line: string): boolean => line.trim().length > 0) ?? "";
+    const firstLine =
+        text.split("\n").find((line: string): boolean => line.trim().length > 0) ?? "";
     const trimmed = firstLine.trim();
 
     return trimmed.length > SessionTitleLength

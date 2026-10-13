@@ -1,6 +1,7 @@
 """database.epoch：`epoch` 表（世）。
 
-对应 `src/entity/epoch.ts` 的 `Epoch`。建元当天为第 1 世，1 世 = 30 朔望月。
+对应 `src/entity/epoch.ts` 的 `Epoch`。建元当天为第 1 世，**1 世 = 30 朔望年**
+（实体口径；一个朔望年含 12 或 13 个朔望月，故一个世含 360–390 个朔望月）。
 """
 
 from __future__ import annotations
@@ -12,8 +13,10 @@ from .hierarchy import Assembly, Result, install
 from .schema import Table
 from .source import Workbook
 
-#: 装配体：1 世 = 30 朔望月，12 世 = 1 运
-ASSEMBLY: Assembly = install(module="epoch", size=30, parent_size=12, parent_module="perform")
+#: 装配体：1 世 = 30 朔望年，12 世 = 1 运
+ASSEMBLY: Assembly = install(
+    module="epoch", size=30, parent_size=12, parent_module="perform", unit="year"
+)
 
 #: 本模块负责的表
 TABLES: list[Table] = ASSEMBLY.tables

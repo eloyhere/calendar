@@ -4,8 +4,8 @@
  *
  * ## 三件事
  *
- * 1. **检索**：按标题与摘要模糊过滤。历史对话页的用途就是"翻旧账"，没有检索
- *    就只能靠滚动；
+ * 1. **检索**：按标题与摘要模糊过滤。会话一多，翻旧账就只能靠滚动，
+ *    检索框是五个模式共用的那个出口；
  * 2. **倒序**：最近说过的排最前（`sessionsOf` 已按 `updatedAt` 倒序）；
  * 3. **删除**：带确认的悬浮按钮。删的是当前会话时由 store 自动落到下一条，
  *    列表不会因此空掉一块。
@@ -146,11 +146,7 @@ function timeOf(session: ChatSession): string {
                             width="200"
                             @confirm="props.chat.dropSession(session.id)">
                             <template #reference>
-                                <ElButton
-                                    text
-                                    size="small"
-                                    class="chat-sessions__drop"
-                                    @click.stop>
+                                <ElButton text size="small" class="chat-sessions__drop" @click.stop>
                                     <ElIcon><Delete /></ElIcon>
                                 </ElButton>
                             </template>

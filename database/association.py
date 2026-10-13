@@ -140,16 +140,24 @@ def fill(
 ) -> dict[str, int]:
     """填充某模块的全部关联表，返回 `表名 -> 行数`。
 
+    关联表的两端列里放的是**父表 / 目标表真实的 identity**（`spans()` 直接读的就是
+    `identity` 列），因此这里用 `batch_write` 直接落库，**不能**走 `write_table`：
+    后者会按 `database/identity.py` 的业务键再换算一次，而 `primary` / `encounter` /
+    `perform` / `epoch` 的业务键恰好是"全局序号"，与自增 identity 落在同一段小区间里，
+    二次换算会把它们整体错位（例如 identity 1 被当成序号 1 换成 identity 2）。
+    写入前先清空本表，保证本函数可以重复执行。
+
     @param module 实体模块名。
     @param connection 本模块的库连接（关联表自己就写在这里）。
-    @param stores 构建上下文（`database.store.Stores`），用于登记关联表自身的 identity。
+    @param stores 构建上下文（`database.store.Stores`），保留以便与其它实体统一签名。
     @param connection_for 表名 -> 已打开的连接。父表与目标表可能在不同库里，
         因此按表名取连接，缺连接时该关联表记 0 行。
     """
-    from .store import write_table  # 延迟导入，避免与 store.py 循环导入
+    from .core import batch_write
 
     counts: dict[str, int] = {}
     for association in associations_of(module):
+        table = association.table
         parent_connection = connection_for(association.parent_table)
         target_connection = connection_for(association.target_table)
         if parent_connection is None or target_connection is None:
@@ -157,7 +165,6 @@ def fill(
             continue
         parent_rows = spans(parent_connection, association.parent_table)
         target_rows = spans(target_connection, association.target_table)
-        table = association.table
         parent_index = table.column_names.index(association.parent_column)
         target_index = table.column_names.index(association.target_column)
 
@@ -168,5 +175,6 @@ def fill(
                 values[target_index] = target_id
                 yield tuple(values)
 
-        counts[association.name] = write_table(connection, stores, table, rows())
+        connection.execute(f'DELETE FROM "{association.name}"')
+        counts[association.name] = batch_write(connection, table, rows())
     return counts

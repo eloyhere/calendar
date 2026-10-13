@@ -1,4 +1,4 @@
-import { net, protocol, shell, BrowserWindow } from "electron";
+import { net, protocol, screen, shell, BrowserWindow } from "electron";
 import { existsSync, statSync } from "fs";
 import { extname, join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
@@ -15,6 +15,46 @@ export interface WindowOptions {
     width?: number;
     height?: number;
 }
+
+/** 默认窗口尺寸：1440×720。 */
+export const DEFAULT_WINDOW_SIZE = { width: 1440, height: 720 } as const;
+
+/**
+ * 最小窗口尺寸。
+ *
+ * 页头是"品牌 + 一级菜单 + 拖拽区 + 三颗窗口按钮"这一条横排，900px 是它不被压扁的
+ * 下限——比这更窄，一级菜单会先挤掉拖拽区、再顶掉右边那颗关闭键。
+ */
+export const MIN_WINDOW_SIZE = { width: 900, height: 600 } as const;
+
+/**
+ * 把想要的尺寸夹到"不小于 min、不大于 area"这一段里。
+ *
+ * 两头都夹一次是为了屏幕本身就小于 `min` 的极端情况（小尺寸的远程桌面会话）：
+ * 那时宁可让窗口比 `min` 更小，也不要让它伸出屏幕外面。
+ */
+const clampSize = (want: number, min: number, area: number): number =>
+    Math.max(Math.min(want, area), Math.min(min, area));
+
+/**
+ * 定窗口尺寸：默认 1440×720，屏幕装不下时按工作区收窄。
+ *
+ * 无边框窗口不会被系统自动收窄——1440×720 在 1366×768 的机器上会直接探出屏幕，
+ * 右边那三颗窗口按钮就点不到了。取**工作区**而不是整屏：任务栏那几十像素不能让
+ * 窗口压过去。
+ */
+const resolveWindowSize = (options: WindowOptions): { width: number; height: number } => {
+    const wanted = {
+        width: options.width ?? DEFAULT_WINDOW_SIZE.width,
+        height: options.height ?? DEFAULT_WINDOW_SIZE.height
+    };
+    const { width: areaWidth, height: areaHeight } = screen.getPrimaryDisplay().workAreaSize;
+
+    return {
+        width: clampSize(wanted.width, MIN_WINDOW_SIZE.width, areaWidth),
+        height: clampSize(wanted.height, MIN_WINDOW_SIZE.height, areaHeight)
+    };
+};
 
 /* -------------------------------------------------------------------------- */
 /* renderer 的自定义协议 `app://`                                               */
@@ -45,7 +85,13 @@ const APP_ENTRY_URL = `${APP_SCHEME}://${APP_HOST}/index.html`;
 protocol.registerSchemesAsPrivileged([
     {
         scheme: APP_SCHEME,
-        privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            corsEnabled: true,
+            stream: true
+        }
     }
 ]);
 
@@ -63,14 +109,20 @@ const serveRenderer = async (request: Request): Promise<Response> => {
         pathname = decodeURIComponent(new URL(request.url).pathname);
     } catch {
         // 畸形百分号编码（`/%zz`）会让 decodeURIComponent 抛错，不该冒泡到协议层
-        return new Response("Bad request", { status: 400, headers: { "content-type": "text/plain" } });
+        return new Response("Bad request", {
+            status: 400,
+            headers: { "content-type": "text/plain" }
+        });
     }
 
     let target = resolve(rendererRoot, `.${pathname}`);
 
     // 目录穿越：`app://local/../../secret` 必须被挡在 renderer 根之外
     if (target !== rendererRoot && !target.startsWith(rendererRoot + sep)) {
-        return new Response("Forbidden", { status: 403, headers: { "content-type": "text/plain" } });
+        return new Response("Forbidden", {
+            status: 403,
+            headers: { "content-type": "text/plain" }
+        });
     }
 
     if (!existsSync(target) || !statSync(target).isFile()) {
@@ -78,7 +130,10 @@ const serveRenderer = async (request: Request): Promise<Response> => {
         // 但**带扩展名的资源不兜底**——否则缺失的 .js 会拿到一坨 HTML，
         // 报错变成难查的 MIME 错误而不是干脆的 404。
         if (extname(target) !== "") {
-            return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
+            return new Response("Not found", {
+                status: 404,
+                headers: { "content-type": "text/plain" }
+            });
         }
         target = join(rendererRoot, "index.html");
     }
@@ -111,15 +166,19 @@ const registerAppProtocol = (): void => {
  *
  * 系统标题栏之上再画一条页面标题栏，顶部会出现两条"标题带"，颜色与高度都对不齐。
  * 去掉系统边框后，最小化 / 最大化 / 关闭三颗按钮由 `ElButton` 画在页面里
- * （`src/component/AppTitleBar.vue`），样式与切换态跟应用其余部分一致。
+ * （`src/component/AppWindowControls.vue`），样式与切换态跟应用其余部分一致。
  *
  * 代价是三件必须自己接的事，缺一样用户就会觉得"这窗口坏了"：
- * 1. **拖拽区**：靠 CSS 的 `-webkit-app-region: drag`，见 AppTitleBar.vue；
+ * 1. **拖拽区**：靠 CSS 的 `-webkit-app-region` / `app-region`，见 AppHeader.vue
+ *    的 `.app-header__drag`——页头整条都可拖，但一级菜单是 `no-drag`，
+ *    所以特意留了一段空白手柄，别把菜单写成 `flex: 1` 把它吃掉；
  * 2. **三颗按钮**：走 `window.desktop.window.*`，落到 `main/ipc.ts`；
  * 3. **最大化状态同步**：按钮图标要跟着变，见 `attachWindowState()`。
  *
  * macOS 例外：那边沿用原生红绿灯（`titleBarStyle: "hiddenInset"`），用户习惯在
  * 左上角找它们；`trafficLightPosition` 把它压到与自绘标题栏同一水平线上。
+ *
+ * 尺寸默认 1440×720（见 `DEFAULT_WINDOW_SIZE`），并按工作区收窄、居中打开。
  *
  * 产物布局约定（与 electron.vite.config.ts 对应）：
  * - 本文件输出到 `out/main/index.js`，故 `__dirname` 是 `out/main`；
@@ -127,9 +186,15 @@ const registerAppProtocol = (): void => {
  * - renderer 输出到 `out/renderer/index.html`，由 `app://local/index.html` 装载。
  */
 export const createWindow = (options: WindowOptions = {}): BrowserWindow => {
+    const { width, height } = resolveWindowSize(options);
+
     const mainWindow = new BrowserWindow({
-        width: options.width ?? 900,
-        height: options.height ?? 670,
+        width,
+        height,
+        minWidth: MIN_WINDOW_SIZE.width,
+        minHeight: MIN_WINDOW_SIZE.height,
+        // 屏幕一大，从左上角弹出来会显得很随意；首次打开落在工作区正中。
+        center: true,
         show: false,
         // 与 Element Plus 默认主题的 --el-bg-color 一致：页面画出来之前不留异色底。
         backgroundColor: "#ffffff",

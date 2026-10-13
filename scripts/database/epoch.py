@@ -1,6 +1,6 @@
 """epoch：世。
 
-世：1 世 = 30 朔望月，12 世 = 1 运；`perform` 列取运表的 identity。
+世：1 世 = 30 朔望年，12 世 = 1 运；`perform` 列取运表的 identity。
 
     python scripts/database/epoch.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

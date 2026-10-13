@@ -50,6 +50,38 @@ export const ICON_NAMES = [
     "Promotion",
     "User",
 
+    // ── 侧栏与页面动作（架构文档 §5.3 与 §6 用到）────────────────────────────
+    // 这些不是"好看"，是每一条都对应一个真实项：系统分组、数据域的三页、
+    // 报告库、结构与索引、权限与审计、设置。名字都在 @element-plus/icons-vue 里。
+    "Setting",
+    "Tools",
+    "Operation",
+    "Document",
+    "DocumentAdd",
+    "Files",
+    "FolderOpened",
+    "List",
+    "Lock",
+    "Bell",
+    "Share",
+    "Download",
+    "Upload",
+    "Edit",
+    "View",
+    "Plus",
+    "Minus",
+    "Check",
+    "Close",
+    "ArrowLeft",
+    "ArrowRight",
+    "DArrowRight",
+    "Sort",
+    "Filter",
+    "DataAnalysis",
+    "PieChart",
+    "Cpu",
+    "Key",
+
     // ── 外壳与状态 ──────────────────────────────────────────────────────────
     "Fold",
     "Expand",
@@ -58,6 +90,15 @@ export const ICON_NAMES = [
     "WarningFilled",
     "CircleCheckFilled",
     "Delete",
+
+    // ── 工作流执行 ──────────────────────────────────────────────────────────
+    // 运行 / 中断 / 排序 / 复制命令：工作流页的运行控制与步骤排序要用到
+    "VideoPlay",
+    "VideoPause",
+    "Top",
+    "Bottom",
+    "DocumentCopy",
+    "Loading",
 
     // ── 深度研究 ────────────────────────────────────────────────────────────
     // 证据的三种立场各要一个图标：支持 / 反证 / 口径。反证必须与支持一样显眼，

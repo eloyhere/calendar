@@ -5,29 +5,45 @@
  * `plugin/router.ts` 的 `routes` 里加一条带 `meta.title` 的路由，
  * 菜单自动多一项，面包屑与窗口标题一并跟上。
  *
+ * ## 两处与本文件旧版的差异（`docs/ui-architecture.md` §5.3）
+ *
+ * ### 1. 分区
+ *
+ * 侧栏分三段：「工作区」「数据与工具」「系统」。分区由路由 `meta.domain` 决定
+ * （`workspace` / `tool` / `system`），在**域一级**写一次，子路由由 vue-router 的
+ * `meta` 合并继承。分区的意义是 chunking——把 9 项一级导航分成三组扫描，
+ * 而不是限制项数（`docs/ui-architecture.md` §2.2 第 5 条已经写明
+ * "Miller 的 7±2 常被误用，长菜单是可以的"）。
+ *
+ * ### 2. 参数化项的展开
+ *
+ * 有一条路由是参数化的：`/calendar/:system/:view?`。菜单要的不是这一条，而是
+ * 「朔望历 / 格里高利历 / 节气表 / 更多历法」四项。这一层展开**不在路由表里**
+ * （路由表要保持"每一页都能被直接检索到"），而在下面的 `MENU_LAYOUT`：
+ * 它只说"哪个菜单项指向哪条路由、带什么参数、叫什么名字"，
+ * **不重复定义路由**——`resolve` 拿不到对应路由时直接报错，而不是悄悄少一项。
+ *
  * ## `meta.menu` 的三种取值
  *
- * 菜单的深浅**本来就不统一**，所以这里要区分三种情况：
- *
- * | 写法                | 含义                                   | 例子                          |
- * | ------------------- | -------------------------------------- | ----------------------------- |
- * | 不写                | 有标题就露出来                          | 大多数页面、`/calendar` 这类域 |
- * | `menu: false`       | 有子项时**露出自己**（渲染成不可跳转的分组） | `/calendar/astronomy` 天文历   |
- * | `menu: "hidden"`    | 彻底藏起来，孩子提上来                   | `/agent/chat` 聊天出口         |
- *
- * 第二种是为了"三级菜单"：历法 → 天文历 → 简介/日历/数据。天文历自己不是页面
- * （没有 `component`，点它只该展开），但**必须占一个位置**，否则八个历法的
- * 简介/日历/数据会全被拍到同一层，出现八个一模一样的"简介"。
- *
- * 第三种给的是 `/agent/chat` 那种"纯出口"：它自己只是个 `<RouterView/>`，
- * 六个聊天模式应当直接挂在"智能体"下面，中间不要多一层。
- *
- * 菜单顺序**就是 `routes` 里的声明顺序**，没有额外的排序字段。
+ * | 写法             | 含义                                       | 例子                |
+ * | ---------------- | ------------------------------------------ | ------------------- |
+ * | 不写             | 有标题就露出来                              | 大多数页面          |
+ * | `menu: false`    | 有子项时**露出自己**（渲染成不可跳转的分组） | 域节点              |
+ * | `menu: "hidden"` | 彻底藏起来，孩子提上来                       | `/:pathMatch(.*)*`  |
  */
 
-import type { AppRoute } from "./route-meta";
 import type { IconName } from "./icons";
 import { routes } from "./router";
+
+/** 分区标识，与 `RouteMeta.domain` 同域。 */
+export type MenuDomain = "workspace" | "tool" | "system";
+
+/** 分区标题。 */
+export const MENU_DOMAINS: readonly { id: MenuDomain; title: string }[] = [
+    { id: "workspace", title: "工作区" },
+    { id: "tool", title: "数据与工具" },
+    { id: "system", title: "系统" }
+];
 
 /** 菜单节点。 */
 export interface MenuNode {
@@ -39,48 +55,251 @@ export interface MenuNode {
     icon: IconName | null;
     /** 页面说明，来自 `meta.description`，渲染成菜单项提示 */
     description: string | null;
+    /** 归属分区 */
+    domain: MenuDomain;
     /** 子节点；空数组表示这是叶子，渲染成 `<ElMenuItem>` */
     children: MenuNode[];
 }
 
-/** 递归构造菜单节点。 */
-function buildNodes(list: readonly AppRoute[]): MenuNode[] {
-    const nodes: MenuNode[] = [];
-
-    for (const route of list) {
-        const children = buildNodes(route.children ?? []);
-        const title = route.meta?.title ?? "";
-        const hidden = route.meta?.menu === "hidden" || title === "";
-
-        // 隐藏节点：自己不出现在菜单里，把孩子提升到当前位置。
-        // 没有标题的节点（外壳 `/`、纯出口 `/agent/chat`）也走这一支。
-        if (hidden) {
-            nodes.push(...children);
-            continue;
-        }
-
-        // 自己没有 `component` 却是分组（`/calendar/astronomy` 这类）：
-        // 点它只会落到一个空白出口，所以给 `path: null` 让它只展开。
-        const isGroupOnly = children.length > 0 && !route.component;
-
-        nodes.push({
-            title,
-            path: isGroupOnly ? null : route.path,
-            icon: route.meta?.icon ?? null,
-            description: route.meta?.description ?? null,
-            children
-        });
+/** 按路径取一条路由记录（深度优先，够用：路由表最多三层且路径唯一）。 */
+const routeAt = (path: string): { title?: string; icon?: IconName; description?: string } | null => {
+    interface Walkable {
+        path: string;
+        meta?: { title?: string; icon?: IconName; description?: string };
+        children?: readonly Walkable[];
     }
 
-    return nodes;
+    const walk = (list: readonly Walkable[]): Walkable["meta"] | null => {
+        for (const record of list) {
+            if (record.path === path) {
+                // `meta` 可能整个不存在：返回空对象而不是 `undefined`，
+                // 让调用方只需判 `null`（"没找到"）与"找到了但没有 meta"两种情况。
+                return record.meta ?? {};
+            }
+            const found = walk(record.children ?? []);
+            if (found !== null) {
+                return found;
+            }
+        }
+        return null;
+    };
+
+    const found = walk(routes as unknown as readonly Walkable[]);
+    return found ?? null;
+};
+
+/** 一个菜单项的声明：指向哪条路由、取什么名字。 */
+interface MenuItemDeclaration {
+    /** 路由 `path`（参数化路由写带 `:参数` 的原样路径） */
+    route: string;
+    /**
+     * 路由参数。给了就拼进 `path`，例如 `{ system: "synodic" }` 把
+     * `/calendar/:system/:view?` 变成 `/calendar/synodic`。
+     */
+    params?: Record<string, string>;
+    /** 菜单文案；不写则取路由的 `meta.title` */
+    title?: string;
+    /** 图标；不写则取路由的 `meta.icon` */
+    icon?: IconName;
+    /** 说明；不写则取路由的 `meta.description` */
+    description?: string;
+    /** 子项 */
+    children?: readonly MenuItemDeclaration[];
 }
 
-/**
- * 菜单树。
- *
- * 顶层是外壳路由 `/`（没有标题），因此它会被当作隐藏节点、把孩子提成顶层——
- * 于是六个业务域成为菜单条上的一级项。
- */
-export function createMenuTree(list: readonly AppRoute[] = routes): MenuNode[] {
-    return buildNodes(list);
+/** 一个分区的声明。 */
+interface MenuSectionDeclaration {
+    domain: MenuDomain;
+    items: readonly MenuItemDeclaration[];
 }
+
+/** 把 `params` 填进带 `:` 的路径。 */
+const fillPath = (path: string, params?: Record<string, string>): string => {
+    if (params === undefined) {
+        return path;
+    }
+    let out = path;
+    for (const [name, value] of Object.entries(params)) {
+        out = out.replace(`:${name}?`, value).replace(`:${name}`, value);
+    }
+    return out;
+};
+
+/** 把声明解析成菜单节点；路由不存在时抛错，避免菜单悄悄少一项。 */
+const resolveItem = (declaration: MenuItemDeclaration): MenuNode => {
+    const meta = routeAt(declaration.route);
+    if (meta === null) {
+        throw new Error(
+            `菜单声明指向了不存在的路由 "${declaration.route}"。` +
+                `新增菜单项时先在 plugin/router.ts 里加路由，或修正这里的 path。`
+        );
+    }
+
+    const children = (declaration.children ?? []).map(resolveItem);
+
+    /**
+     * 这个节点自己能不能跳。
+     *
+     * 与 `plugin/menu.ts` 旧版的规则一致：**有子项且自己没有页面**时才渲染成
+     * 只展开不跳转的分组。这里唯一的判断依据是"声明里给了 `params` 或路由不含参数"：
+     *
+     * - `/agent/flow` 有子项？没有。所以它可跳；
+     * - `/calendar/:system/:view?` 的"历法"项有子项，但声明里给了
+     *   `params: { system: "synodic" }`，所以它**可跳**（跳到朔望历简介）。
+     */
+    const jumpable = !declaration.route.includes(":") || declaration.params !== undefined;
+
+    return {
+        title: declaration.title ?? meta.title ?? fillPath(declaration.route, declaration.params),
+        path: jumpable ? fillPath(declaration.route, declaration.params) : null,
+        icon: declaration.icon ?? meta.icon ?? null,
+        description: declaration.description ?? meta.description ?? null,
+        // 分区由所在 section 决定，不从这里取——`domain` 只在域一级写
+        domain: "workspace",
+        children
+    };
+};
+
+/**
+ * 菜单布局。
+ *
+ * 顺序即显示顺序（`docs/ui-architecture.md` §2.2 第 6 条：按使用频率排，不按字母序）。
+ */
+const MENU_LAYOUT: readonly MenuSectionDeclaration[] = [
+    {
+        domain: "workspace",
+        items: [
+            // 工作台的路由是外壳的**空路径子页**，所以这里写外壳自己的路径 `/`。
+            // 写 `""` 会让菜单项的 index 变成空串——能跳转，但高亮比对的是
+            // `route.path`（值是 `/`），两边对不上。
+            { route: "/", title: "工作台", icon: "Odometer" },
+            { route: "/agent/chat/:mode?", title: "对话", params: { mode: "create" } },
+            { route: "/agent/flow", title: "工作流" },
+            { route: "/agent/report", title: "报告" }
+        ]
+    },
+    {
+        domain: "tool",
+        items: [
+            { route: "/data/:page", title: "数据浏览", params: { page: "browse" } },
+            {
+                // 历法：一个有子项的一级项。它自己指向朔望历（唯一有 29 万行真实历表的体系）。
+                route: "/calendar/:system/:view?",
+                title: "历法",
+                params: { system: "synodic", view: "entry" },
+                icon: "Calendar",
+                children: [
+                    {
+                        route: "/calendar/:system/:view?",
+                        title: "朔望历",
+                        params: { system: "synodic", view: "entry" },
+                        icon: "MoonNight"
+                    },
+                    {
+                        route: "/calendar/:system/:view?",
+                        title: "格里高利历",
+                        params: { system: "gregory", view: "entry" },
+                        icon: "Sunny"
+                    },
+                    {
+                        route: "/calendar/:system/:view?",
+                        title: "节气表",
+                        params: { system: "climate", view: "entry" },
+                        icon: "Clock"
+                    },
+                    {
+                        // 「更多历法」指向天文历简介，同时收纳其余四套。
+                        //
+                        // 这会让菜单出现一处三级缩进。`docs/ui-architecture.md` §5.3 有一整段
+                        // 论证它为什么不违反"主菜单最多 2 层"：那条规则约束的是**逐级展开**
+                        // 的次数，而 Element Plus 的子菜单展开时父级与同级同时可见，
+                        // 用户不是在层级之间来回移动。真正被否掉的是旧表的
+                        // "历法 → 天文历 → 简介"，那里八个历法各有一个同名子项。
+                        route: "/calendar/:system/:view?",
+                        title: "更多历法",
+                        params: { system: "astronomy", view: "entry" },
+                        icon: "Star",
+                        children: [
+                            {
+                                route: "/calendar/:system/:view?",
+                                title: "天文历",
+                                params: { system: "astronomy", view: "entry" },
+                                icon: "Star"
+                            },
+                            {
+                                route: "/calendar/:system/:view?",
+                                title: "木星历",
+                                params: { system: "jupiter", view: "entry" },
+                                icon: "Opportunity"
+                            },
+                            {
+                                route: "/calendar/:system/:view?",
+                                title: "轩辕历",
+                                params: { system: "natural", view: "entry" },
+                                icon: "Guide"
+                            },
+                            {
+                                route: "/calendar/:system/:view?",
+                                title: "干支历",
+                                params: { system: "tree", view: "entry" },
+                                icon: "Connection"
+                            },
+                            {
+                                route: "/calendar/:system/:view?",
+                                title: "回归历",
+                                params: { system: "tropical", view: "entry" },
+                                icon: "Compass"
+                            }
+                        ]
+                    }
+                ]
+            },
+            { route: "/chronology/:page", title: "年表", params: { page: "timeline" } },
+            { route: "/numerology/:page", title: "命理", params: { page: "wiki" } }
+        ]
+    },
+    {
+        domain: "system",
+        items: [{ route: "/system/:page", title: "系统设置", params: { page: "setting" } }]
+    }
+];
+
+/** 给已解析的节点补上分区（叶子与子节点都要）。 */
+const withDomain = (node: MenuNode, domain: MenuDomain): MenuNode => ({
+    ...node,
+    domain,
+    children: node.children.map((child) => withDomain(child, domain))
+});
+
+/**
+ * 按分区组织的菜单树。
+ *
+ * 侧栏按这个结果分段渲染。空分区会被去掉——否则将来某个分区被清空时，
+ * 界面上会留下一行没有内容的标题。
+ */
+export const createMenuSections: () => readonly { title: string; nodes: MenuNode[] }[] = () =>
+    MENU_DOMAINS.map((section) => ({
+        title: section.title,
+        nodes: (MENU_LAYOUT.find((item) => item.domain === section.id)?.items ?? []).map((item) =>
+            withDomain(resolveItem(item), section.id)
+        )
+    })).filter((section) => section.nodes.length > 0);
+
+/**
+ * 扁平菜单树（旧形状，兼容用）。
+ *
+ * `docs/ui-architecture.md` §5.3 之后侧栏改用 `createMenuSections()`；
+ * 这个函数保留给还需要"一棵树"的调用方（命令面板按标题搜索）。
+ */
+export function createMenuTree(): MenuNode[] {
+    return createMenuSections().flatMap((section) => section.nodes);
+}
+
+/** 把菜单树拍平成"标题 → 路径"的列表，命令面板用它做跳转候选。 */
+export const flattenMenu = (nodes: readonly MenuNode[]): { title: string; path: string; description: string | null; icon: IconName | null }[] =>
+    nodes.flatMap((node) => [
+        ...(node.path === null
+            ? []
+            : [{ title: node.title, path: node.path, description: node.description, icon: node.icon }]),
+        ...flattenMenu(node.children)
+    ]);

@@ -37,8 +37,8 @@ export { RouteName, routes, resolveRoutePath } from "./router";
 export type { AppRoute } from "./route-meta";
 
 /* 菜单树 */
-export { createMenuTree } from "./menu";
-export type { MenuNode } from "./menu";
+export { createMenuTree, createMenuSections, flattenMenu, MENU_DOMAINS } from "./menu";
+export type { MenuNode, MenuDomain } from "./menu";
 
 /* 图标：`meta.icon` 只能取白名单里的名字 */
 export { isIconName } from "./icons";

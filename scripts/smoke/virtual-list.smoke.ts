@@ -1,7 +1,11 @@
 /**
  * 虚拟列表算术烟测：把 `computeVirtualRange()` 与 `scrollTopForIndex()` 的边界钉住。
  *
- * 运行（Node 不能直接跑带无扩展名 import 的 TS，先用 esbuild 打成一个文件）：
+ * 运行（Node 24 能直接跑 `.ts`，靠类型擦除；**导入必须带 `.ts` 后缀**）：
+ *
+ *     node scripts/smoke/virtual-list.smoke.ts
+ *
+ * 旧版 Node 不认识 `.ts`，先打包再跑，效果一样：
  *
  *     node node_modules/esbuild/bin/esbuild scripts/smoke/virtual-list.smoke.ts --bundle --platform=node --format=esm --outfile=virtual-list.smoke.mjs
  *     node virtual-list.smoke.mjs
@@ -9,16 +13,22 @@
  * 全部断言通过时退出码为 0；失败会列出具体断言名并以 1 退出。
  * 被测的是纯函数（不碰 DOM、不碰 Vue、不碰数据库），因此可脱离 Electron 单独跑。
  *
+ * Node 会打一条 `MODULE_TYPELESS_PACKAGE_JSON` 提示（`.ts` 里写了 `import`，它按 ESM
+ * 重新解析一次），不影响结果，也不必为此给 `package.json` 加 `"type": "module"`。
+ *
  * 为什么值得单独测：虚拟列表出错的样子是「偶尔露白」「滚到底少一行」
  * 「数据变短后一片空白」——都能忍，所以都不会被发现。这里把每种情形写成一条断言，
  * 让它们变成会失败的测试。
  */
-import { computeVirtualRange, scrollTopForIndex } from "../../src/component/list/virtual-range";
+import {
+    computeVirtualRange,
+    scrollTopForIndex
+} from "../../src/component/list/virtual/virtual-range.ts";
 import type {
     ScrollAlign,
     VirtualRange,
     VirtualRangeInput
-} from "../../src/component/list/virtual-range";
+} from "../../src/component/list/virtual/virtual-range.ts";
 
 /** 常用输入：1000 行、行高 36px、视口 360px（正好 10 行）、上下各 4 行缓冲。 */
 const Base: VirtualRangeInput = {

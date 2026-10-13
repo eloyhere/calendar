@@ -83,8 +83,7 @@ const Outline = [
 
             <p class="xy-note">{{ formatNote }}</p>
             <p class="xy-note">
-                课题名与格式**还没有传给任何后端**（对话尚未接入），
-                现在只影响这一页显示什么。
+                课题名与格式**还没有传给任何后端**（对话尚未接入）， 现在只影响这一页显示什么。
             </p>
         </section>
 

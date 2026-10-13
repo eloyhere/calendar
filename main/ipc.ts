@@ -2,6 +2,13 @@ import { ipcMain, BrowserWindow } from "electron";
 
 import { WindowChannels, isWindowCommand } from "../shared/window-api";
 import type { WindowState } from "../shared/window-api";
+import { WorkflowChannels, isWorkflowStepList } from "../shared/workflow-api";
+import type { WorkflowEvent } from "../shared/workflow-api";
+import { OsChannels, isOsInvokeRequest } from "../shared/os-api";
+import type { OsInvokeResult } from "../shared/os-api";
+import { CalendarChannels, isCalendarColumnsRequest, isCalendarSelectRequest } from "../shared/calendar-api";
+import { cancelWorkflow, invokeOs, readCatalog, runWorkflow } from "./workflow";
+import { readColumns, readModuleStates, selectRow, selectRows } from "./database";
 
 /**
  * IPC 通道注册。
@@ -107,5 +114,94 @@ export const registerIpc = (): void => {
                 window.close();
                 break;
         }
+    });
+
+    /* ---------------------------------------------------------------------- */
+    /* 工作流：执行 scripts/operation 的 dsh-os 命令层                          */
+    /* ---------------------------------------------------------------------- */
+
+    // 动词清单与当前平台选中的入口。产物缺失或解释器不可用时走 problem 字段，
+    // 不抛错——前端要能把这个原因显示成一句可操作的提示。
+    ipcMain.handle(WorkflowChannels.catalog, () => readCatalog());
+
+    ipcMain.handle(WorkflowChannels.run, async (event, steps: unknown) => {
+        // 形状校验在这里：`spawn` 的入参必须是干净的字符串数组，不能靠前端自觉。
+        if (!isWorkflowStepList(steps)) {
+            throw new Error("工作流步骤的形状不合法，已拒绝执行");
+        }
+
+        // 事件推回**发起这次运行的窗口**，而不是记住"当前窗口"——
+        // 将来开第二个窗口时两个窗口各跑各的，输出不会串台。
+        const sender = event.sender;
+        const emit = (payload: WorkflowEvent): void => {
+            if (!sender.isDestroyed()) {
+                sender.send(WorkflowChannels.event, payload);
+            }
+        };
+
+        return runWorkflow(steps, emit);
+    });
+
+    ipcMain.on(WorkflowChannels.cancel, () => {
+        cancelWorkflow();
+    });
+
+    /* ---------------------------------------------------------------------- */
+    /* dsh-os 单动词钩子                                                        */
+    /* ---------------------------------------------------------------------- */
+
+    // 清单与工作流共用一份（`readCatalog`），所以两个通道返回的是同一张表。
+    // 页面调它拿参数名与开关，用来渲染可读的参数标签，而不是让用户对着 arg1 猜。
+    ipcMain.handle(OsChannels.catalog, () => readCatalog());
+
+    ipcMain.handle(OsChannels.invoke, async (_event, request: unknown): Promise<OsInvokeResult> => {
+        // 形状校验与工作流同源：拒掉的是前端的 bug，不是"恶意前端"。
+        if (!isOsInvokeRequest(request)) {
+            throw new Error("动词调用的形状不合法，已拒绝执行");
+        }
+
+        const result = await invokeOs({
+            verb: request.verb,
+            args: request.args,
+            named: request.named,
+            flags: request.flags,
+            allow: request.allow
+        });
+
+        return { verb: request.verb, ...result };
+    });
+
+    // 单动词调用与工作流共用同一个子进程槽位（`activeChild`），所以中断也是同一个入口。
+    ipcMain.on(OsChannels.cancel, () => {
+        cancelWorkflow();
+    });
+
+    /* ---------------------------------------------------------------------- */
+    /* 分库查询                                                                */
+    /* ---------------------------------------------------------------------- */
+
+    // 22 个分库的实时状态。行数是现算的 `COUNT(*)`，不是构建期记下来的数字——
+    // 界面要回答"现在有多少行"，而不是"上次构建时有多少行"。
+    ipcMain.handle(CalendarChannels.modules, () => readModuleStates());
+
+    ipcMain.handle(CalendarChannels.select, (_event, request: unknown) => {
+        if (!isCalendarSelectRequest(request)) {
+            throw new Error("查询请求的形状不合法，已拒绝执行");
+        }
+        return selectRows(request);
+    });
+
+    ipcMain.handle(CalendarChannels.selectOne, (_event, request: unknown) => {
+        if (!isCalendarSelectRequest(request)) {
+            throw new Error("查询请求的形状不合法，已拒绝执行");
+        }
+        return selectRow(request);
+    });
+
+    ipcMain.handle(CalendarChannels.columns, (_event, request: unknown) => {
+        if (!isCalendarColumnsRequest(request)) {
+            throw new Error("取列的请求形状不合法，已拒绝执行");
+        }
+        return readColumns(request);
     });
 };

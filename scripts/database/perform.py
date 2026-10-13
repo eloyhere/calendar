@@ -1,6 +1,6 @@
 """perform：运。
 
-运：1 运 = 12 世 = 360 朔望月，30 运 = 1 会；`encounter` 列取会表的 identity。
+运：1 运 = 12 世 = 360 朔望年，30 运 = 1 会；`encounter` 列取会表的 identity。
 
     python scripts/database/perform.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

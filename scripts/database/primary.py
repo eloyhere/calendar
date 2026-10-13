@@ -1,6 +1,6 @@
 """primary：元。
 
-元：1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望月；本库朔望月不足 3 元，故只有第 1 元一行。
+元：1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望年；本库朔望年不足 1 元，故只有第 0、1 元两行。
 
     python scripts/database/primary.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

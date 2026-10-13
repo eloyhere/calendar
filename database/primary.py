@@ -1,8 +1,9 @@
 """database.primary：`primary` 表（元）。
 
-对应 `src/entity/primary.ts` 的 `Primary`。1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望月。
+对应 `src/entity/primary.ts` 的 `Primary`。
+**1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望年**。
 
-本库朔望月总数 290,654，不足 3 元，实际只有 1 行（第 1 元），
+本库朔望年总数 23,500，不足 1 元，故只有第 0、1 元两行（建元所在元为第 1 元），
 但表结构与推导逻辑对任意元数都成立。
 """
 
@@ -15,8 +16,10 @@ from .hierarchy import Assembly, Result, install
 from .schema import Table
 from .source import Workbook
 
-#: 装配体：1 元 = 129600 朔望月，顶层无父级
-ASSEMBLY: Assembly = install(module="primary", size=129_600, parent_size=None, parent_module=None)
+#: 装配体：1 元 = 129600 朔望年，顶层无父级
+ASSEMBLY: Assembly = install(
+    module="primary", size=129_600, parent_size=None, parent_module=None, unit="year"
+)
 
 #: 本模块负责的表
 TABLES: list[Table] = ASSEMBLY.tables

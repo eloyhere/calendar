@@ -1,7 +1,7 @@
 """astronomy.calendar：天文纪年。
 
-天文纪年（年 + 月）：年由合朔时刻与回归年长定界，月即朔望月；换算法则见
-`database/astronomy.py` 的 RULE，本轮只建表、不写行。
+天文纪年（年 + 月）：年由合朔时刻与回归年长定界 —— 取回归年界之后的第一个朔月做年首，
+月即朔望月；换算法则见 `database/calendars.py` 的 `astronomy.calendar` 一项。
 
     python scripts/database/astronomy_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

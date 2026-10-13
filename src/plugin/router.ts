@@ -1,52 +1,72 @@
 /**
  * 路由表：**唯一配置**。
  *
- * 侧栏菜单（`plugin/menu.ts`）、面包屑（`component/AppBreadcrumb.vue`）、窗口标题
- * 都从这棵树推导，不另写一份列表。新增页面 = 在这里加一条路由。
+ * 侧栏菜单（`plugin/menu.ts`）、命令面板、面包屑（`component/AppBreadcrumb.vue`）、
+ * 窗口标题都从这棵树推导，不另写一份列表。新增页面 = 在这里加一条路由。
  *
- * ## 结构
+ * 本表按 `docs/ui-architecture.md` §4 重建。与旧表的差异逐条记在那份文档的 §3.2 与 §11.1，
+ * 这里只记**读表时需要知道的约定**。
+ *
+ * ## 结构（35 条）
  *
  * ```
- * /                       AppShell（ElContainer + 页头 + 面包屑 + <RouterView/>）
- * ├─ （空路径）           概览
- * ├─ /agent              智能体
- * ├─ /calendar           历法
- * ├─ /numerology         命理
- * ├─ /year               年
- * └─ /performance        性能
+ * /                              AppShell（侧栏 + 顶栏 + 内容 + 状态栏）
+ * ├─ ""                          工作台/               工作区
+ * ├─ /agent                      智能体                 工作区
+ * │  ├─ /agent/chat/:mode?        对话
+ * │  ├─ /agent/flow               工作流（定义库）
+ * │  ├─ /agent/flow/run           运行记录
+ * │  └─ /agent/report             报告
+ * ├─ /agent/flow/:id             编排器                ← 沉浸布局，无侧栏
+ * ├─ /calendar                   历法                   工具
+ * │  └─ /calendar/:system/:view?  历法工作区
+ * ├─ /chronology                 年表                   工具
+ * │  └─ /chronology/:page
+ * ├─ /numerology                 命理                   工具
+ * │  └─ /numerology/:page
+ * ├─ /data                       数据                   工具
+ * │  └─ /data/:page
+ * ├─ /system                     系统                   系统
+ * │  └─ /system/:page
+ * └─ /:pathMatch(.*)*             兜底回工作台
  * ```
  *
- * 三种节点：
+ * ## 三种节点
  *
- * 1. **域**（`/calendar`）：`component` 指向 `view/<Domain>View.vue`，
- *    那个文件只写一个 `<RouterView />` 把渲染委托给下一层。域自身带 `redirect`，
- *    直接访问时落到默认子页。
- * 2. **页**：真正要写内容的页面。
- * 3. **分组**（`/calendar/astronomy` 这类历法实体）：没有 `component`，
- *    只负责在菜单里收纳"简介 / 日历 / 数据"三项，点它只展开不跳转。
- *    菜单侧由 `plugin/menu.ts` 判 `component` 是否存在。
+ * 1. **布局**：`/` 与 `/agent/flow/:id`，前者是常规三区，后者全宽。用 `meta.chrome` 标；
+ * 2. **域**：`/calendar`、`/chronology` … `component` 指向 `view/<Domain>View.vue`，
+ *    那个文件只写一个 `<RouterView/>`（见 `component/DomainOutlet.vue` 的说明）。
+ *    域自身带 `redirect`，直接访问时落到默认子页。
+ * 3. **页**：真正要写内容的页面。参数化的域（历法/年表/命理/数据/系统）用一个
+ *    `:page` 或 `:system` 参数吃掉同一形状的多页，形状来自 `src/entity/` 的登记表。
+ *
+ * ## 为什么参数化而不是逐页写死
+ *
+ * 旧表把 8 套历法 × 3 个视图写成 24 条路由、24 个页面文件，而它们的形状完全相同。
+ * `docs/ui-architecture.md` §2.2 第 3 条（渐进披露的两层规则）与第 4 条（Hick 定律的
+ * 分组策略）都指向同一结论：**同一形状的东西不该在菜单里平铺**。
+ * 代价是"某个体系少一页"这类差异藏进了登记表——所以登记表必须显式
+ * （`src/entity/calendar.ts` 的 `CalendarSystems`），而不是靠路由表的行数体现。
  *
  * ## 为什么这张表里没有任何函数
  *
- * 这里是**纯配置**：整棵树逐条写死，没有生成器、没有拼路径的辅助函数。8 个历法
- * 实体的三件套形状相同，本可以循环生成，但那会让"某个实体少一页""标题写成别的"
- * 这类差异藏在参数里而非表里——读路由表时得先在心里跑一遍生成器。代价是这张表
- * 长一些，换来的是**每一页都能被直接检索到**。
+ * 这里是**纯配置**：整棵树逐条写死，没有生成器、没有拼路径的辅助函数。代价是表长一些，
+ * 换来的是**每一页都能被直接检索到**——读路由表时不必先在心里跑一遍生成器。
+ * 由此表里每一层的 `path` 都写成**绝对路径**，菜单与面包屑因此可以直接取
+ * `route.path`，不需要任何拼接。
  *
- * 由此表里每一层的 `path` 都写成**绝对路径**（`/calendar/astronomy/entry`），
- * 相对路径与空路径不再出现，菜单与面包屑因此可以直接取 `route.path`，
- * 不需要任何拼接。
+ * ## 外壳挂在 `/`、工作台是它的空路径子页
  *
- * ## 外壳挂在 `/`、概览反而是它的子页
- *
- * 更直觉的两种写法都不成立，记在这里免得再试：
+ * 另外两种写法都实测失败，记在这里免得再试：
  *
  * - 外壳挂 `/overview` + `alias: "/"`：别名会与**已注册的兄弟路由争抢匹配**，
- *   实测 `/agent`、`/calendar` 全被别名抢走落到概览；
- * - `/` 纯 redirect 到 `/overview` + 外壳挂 `/overview`：外壳就同时需要
+ *   实测 `/agent`、`/calendar` 全被别名抢走落到工作台；
+ * - `/` 纯 redirect 到 `/dashboard` + 外壳挂 `/dashboard`：外壳就同时需要
  *   `component` 与 `redirect`，而 `RouteRecordRedirect` 的 `component` 是 `never`。
  *
- * 所以外壳占 `/`，概览是它的空路径子页；写错的地址由域内的兜底拉回 `/`。
+ * 所以外壳占 `/`，工作台是它的空路径子页。`/dashboard` 由外壳上的
+ * `alias` 之外的**一条显式 redirect**兜住：点菜单里的"工作台"仍然跳得回来，
+ * 而菜单项的 `path` 就是 `/`。
  *
  * ## 一律懒加载
  *
@@ -56,16 +76,12 @@
  * ## 路由模式：hash，而不是 history
  *
  * `createWebHashHistory()`——沿用 electron-vite 模板的约定。URL 形如
- * `app://local/index.html#/calendar/astronomy/entry`。
+ * `app://local/index.html#/calendar/synodic/data`。
  *
- * 为什么不用 `createWebHistory()`：打包后页面由主进程装载，若走 `loadFile(...)`
- * 就是 `file://`，而 `file://` 的来源是 opaque 的——`history.pushState` 会抛
- * `SecurityError`，刷新与深链也会去请求真实文件路径而 404。
- *
- * `main/window.ts` 现在改用自定义协议 `app://` 装载（`registerSchemesAsPrivileged`
- * + `protocol.handle`），页面因此拿到了正常来源，上面那个 `file://` 障碍已经不存在。
- * 但这里**保持 hash 不变**：URL 里多一个 `#` 对桌面应用没有实际代价，而 hash 模式
- * 在任何装载方式下都不会坏。真要换 history，只改本文件这一处即可。
+ * `main/window.ts` 现在用自定义协议 `app://` 装载，页面有正常来源，
+ * 所以 `createWebHistory()` 也能用了；但这里**保持 hash 不变**：URL 里多一个 `#`
+ * 对桌面应用没有实际代价，而 hash 模式在任何装载方式下都不会坏。真要换 history，
+ * 只改本文件这一处即可。
  */
 
 import { createRouter, createWebHashHistory } from "./dependencies";
@@ -76,7 +92,7 @@ import type { AppRoute } from "./route-meta";
  * 把路由的 `path` 规范化成可直接用于菜单 index 的绝对路径。
  *
  * 三种输入都要处理，缺一个菜单就指错地方：绝对路径原样返回、相对路径按父链
- * 拼接、空串（概览那种 `path: ""` 的子页）返回父路径本身。
+ * 拼接、空串（工作台那种 `path: ""` 的子页）返回父路径本身。
  */
 export function resolveRoutePath(path: string, parentPath = ""): string {
     const base = parentPath.endsWith("/") && parentPath !== "/" ? parentPath.slice(0, -1) : parentPath;
@@ -93,8 +109,7 @@ export function resolveRoutePath(path: string, parentPath = ""): string {
 /**
  * 创建应用路由实例。
  *
- * - `history` 用 **hash 模式**：应用由 Electron 以 `file://` 装载 `index.html`，
- *   history 模式在刷新与深链时会去请求真实文件路径而 404；
+ * - `history` 用 **hash 模式**（理由见文件头）；
  * - `list` 默认就是真实路由表，留出来是给测试注入"把 `component` 换成空壳"的
  *   副本——Node 加载不了 `.vue`，而路由解析与组件内容无关。
  */
@@ -110,69 +125,30 @@ export function createAppRouter(history?: RouterHistory, list: readonly AppRoute
 /** 路由名。全应用只有这一处写路由名字符串。 */
 export const RouteName = {
     home: "home",
-    overview: "overview",
+    workspace: "workspace",
     fallback: "fallback",
 
+    /* 工作区 */
     agent: "agent",
     agentChat: "agent-chat",
-    agentChatCreate: "agent-chat-create",
-    agentChatHistory: "agent-chat-history",
-    agentChatResearch: "agent-chat-research",
-    agentChatSurvey: "agent-chat-survey",
-    agentChatThought: "agent-chat-thought",
-    agentChatTopic: "agent-chat-topic",
     agentFlow: "agent-flow",
+    agentFlowEditor: "agent-flow-editor",
+    agentFlowRun: "agent-flow-run",
+    agentReport: "agent-report",
 
+    /* 工具 */
     calendar: "calendar",
-    calendarAstronomy: "calendar-astronomy",
-    calendarAstronomyEntry: "calendar-astronomy-entry",
-    calendarAstronomyCalendar: "calendar-astronomy-calendar",
-    calendarAstronomyData: "calendar-astronomy-data",
-    calendarGregory: "calendar-gregory",
-    calendarGregoryEntry: "calendar-gregory-entry",
-    calendarGregoryCalendar: "calendar-gregory-calendar",
-    calendarGregoryData: "calendar-gregory-data",
-    calendarJupiter: "calendar-jupiter",
-    calendarJupiterEntry: "calendar-jupiter-entry",
-    calendarJupiterCalendar: "calendar-jupiter-calendar",
-    calendarJupiterData: "calendar-jupiter-data",
-    calendarNatural: "calendar-natural",
-    calendarNaturalEntry: "calendar-natural-entry",
-    calendarNaturalCalendar: "calendar-natural-calendar",
-    calendarNaturalData: "calendar-natural-data",
-    calendarSynodic: "calendar-synodic",
-    calendarSynodicEntry: "calendar-synodic-entry",
-    calendarSynodicCalendar: "calendar-synodic-calendar",
-    calendarSynodicData: "calendar-synodic-data",
-    calendarTree: "calendar-tree",
-    calendarTreeEntry: "calendar-tree-entry",
-    calendarTreeCalendar: "calendar-tree-calendar",
-    calendarTreeData: "calendar-tree-data",
-    calendarTropical: "calendar-tropical",
-    calendarTropicalEntry: "calendar-tropical-entry",
-    calendarTropicalCalendar: "calendar-tropical-calendar",
-    calendarTropicalData: "calendar-tropical-data",
-    calendarChronology: "calendar-chronology",
-    calendarChronologyEntry: "calendar-chronology-entry",
-    calendarChronologyData: "calendar-chronology-data",
-    calendarClimate: "calendar-climate",
-    calendarClimateEntry: "calendar-climate-entry",
-    calendarClimateData: "calendar-climate-data",
-
+    calendarSystem: "calendar-system",
+    chronology: "chronology",
+    chronologyPage: "chronology-page",
     numerology: "numerology",
-    numerologyWiki: "numerology-wiki",
-    numerologyBazi: "numerology-bazi",
-    numerologyZiwei: "numerology-ziwei",
-    numerologyQizheng: "numerology-qizheng",
-    numerologyGua: "numerology-gua",
-    numerologyHoroscope: "numerology-horoscope",
+    numerologyPage: "numerology-page",
+    data: "data",
+    dataPage: "data-page",
 
-    year: "year",
-    yearTropical: "year-tropical",
-
-    performance: "performance",
-    performanceOverview: "performance-overview",
-    performanceDatasource: "performance-datasource"
+    /* 系统 */
+    system: "system",
+    systemPage: "system-page"
 } as const;
 
 /**
@@ -186,19 +162,30 @@ export const routes: AppRoute[] = [
         name: RouteName.home,
         component: () => import("../component/AppShell.vue"),
         // 外壳自己不是页面，也没有标题：`menu.ts` 会把没有标题的节点当隐藏节点，
-        // 把孩子（六个业务域）提升成菜单条上的一级项
-        meta: { menu: "hidden" },
+        // 把孩子提升成侧栏的一级项。
+        meta: { menu: "hidden", chrome: "main" },
         children: [
             {
-                // 概览：外壳的默认子页，路径就是 `/`
+                // 工作台：外壳的默认子页，路径就是 `/`。
+                //
+                // 没有写成 `/dashboard`，因为那会让"侧栏的'工作台'项该指向哪个 index"
+                // 出现两个答案（`/` 与 `/dashboard`），而 `route.path` 只能有一个值，
+                // 高亮必然在某一处失效。`/dashboard` 由下面一条 redirect 兜住。
                 path: "",
-                name: RouteName.overview,
-                component: () => import("../view/OverviewView.vue"),
+                name: RouteName.workspace,
+                component: () => import("../view/WorkspaceView.vue"),
                 meta: {
-                    title: "概览",
+                    title: "工作台",
                     icon: "Odometer",
-                    description: "全库规模、数据源与最近的构建状态"
+                    description: "库规模、数据健康、最近活动与上次停下的地方",
+                    domain: "workspace"
                 }
+            },
+            {
+                // 让 `/dashboard` 也能进来：命令面板与外部链接用它。
+                path: "/dashboard",
+                redirect: "/",
+                meta: { menu: "hidden" }
             },
 
             /* ── 智能体 ───────────────────────────────────────────────────── */
@@ -206,90 +193,74 @@ export const routes: AppRoute[] = [
                 path: "/agent",
                 name: RouteName.agent,
                 component: () => import("../view/AgentView.vue"),
-                redirect: "/agent/chat/create",
-                meta: { title: "智能体", icon: "MagicStick" },
+                redirect: "/agent/chat",
+                meta: { title: "助手", icon: "MagicStick", domain: "workspace" },
                 children: [
                     {
-                        // 六个聊天模式的共同出口，本身不进菜单
-                        path: "/agent/chat",
+                        // 四个对话模式共用一个页面，`:mode` 决定右栏与开场白。
+                        // 旧表把五个模式写成五条路由五个文件，形状完全相同的部分是
+                        // 三栏壳——那正是 `view/agent/ChatView.vue` 与
+                        // `view/agent/chat/ChatPage.vue` 已经在做的事，所以这里不再复制。
+                        path: "/agent/chat/:mode?",
                         name: RouteName.agentChat,
                         component: () => import("../view/agent/ChatView.vue"),
-                        redirect: "/agent/chat/create",
-                        meta: { title: "对话", icon: "ChatLineSquare", menu: "hidden" },
-                        children: [
-                            {
-                                path: "/agent/chat/create",
-                                name: RouteName.agentChatCreate,
-                                component: () => import("../view/agent/ChatCreateView.vue"),
-                                meta: {
-                                    title: "新建对话",
-                                    icon: "ChatDotRound",
-                                    description: "与助手自由对话，快速开始任务"
-                                }
-                            },
-                            {
-                                path: "/agent/chat/history",
-                                name: RouteName.agentChatHistory,
-                                component: () => import("../view/agent/ChatHistoryView.vue"),
-                                meta: {
-                                    title: "历史对话",
-                                    icon: "Clock",
-                                    description: "检索、继续或清理此前的会话"
-                                }
-                            },
-                            {
-                                path: "/agent/chat/research",
-                                name: RouteName.agentChatResearch,
-                                component: () => import("../view/agent/ChatResearchView.vue"),
-                                meta: {
-                                    title: "深度研究",
-                                    icon: "Search",
-                                    description: "检索可信资料，深入分析课题并生成报告"
-                                }
-                            },
-                            {
-                                path: "/agent/chat/survey",
-                                name: RouteName.agentChatSurvey,
-                                component: () => import("../view/agent/ChatSurveyView.vue"),
-                                meta: {
-                                    title: "数据调研",
-                                    icon: "TrendCharts",
-                                    description: "查找相关数据，建立统计模型并输出分析结果"
-                                }
-                            },
-                            {
-                                path: "/agent/chat/thought",
-                                name: RouteName.agentChatThought,
-                                component: () => import("../view/agent/ChatThoughtView.vue"),
-                                meta: {
-                                    title: "思维碰撞",
-                                    icon: "Promotion",
-                                    description: "助手向你提问，帮你梳理和拓展思考链路"
-                                }
-                            },
-                            {
-                                path: "/agent/chat/topic",
-                                name: RouteName.agentChatTopic,
-                                component: () => import("../view/agent/ChatTopicView.vue"),
-                                meta: {
-                                    title: "课题研究",
-                                    icon: "Collection",
-                                    description: "围绕指定课题检索资料并生成分析"
-                                }
-                            }
-                        ]
+                        meta: {
+                            title: "对话",
+                            icon: "ChatDotRound",
+                            description: "新建对话 / 深度研究 / 数据调研 / 课题研究",
+                            keepAlive: true
+                        }
                     },
                     {
                         path: "/agent/flow",
                         name: RouteName.agentFlow,
-                        component: () => import("../view/agent/FlowView.vue"),
+                        component: () => import("../view/agent/FlowLibraryView.vue"),
                         meta: {
                             title: "工作流",
                             icon: "Connection",
-                            description: "把多次对话编排成可复用的流程"
+                            description: "把多次操作编排成可复用、可回放的流程"
+                        }
+                    },
+                    {
+                        path: "/agent/flow/run",
+                        name: RouteName.agentFlowRun,
+                        component: () => import("../view/agent/FlowRunView.vue"),
+                        meta: {
+                            title: "运行记录",
+                            icon: "List",
+                            description: "每次运行的时间线、产出与授权痕迹"
+                        }
+                    },
+                    {
+                        path: "/agent/report",
+                        name: RouteName.agentReport,
+                        component: () => import("../view/agent/ReportView.vue"),
+                        meta: {
+                            title: "报告",
+                            icon: "Collection",
+                            description: "深度研究与课题研究的产出"
                         }
                     }
                 ]
+            },
+            {
+                // 编排器：**沉浸布局**，不渲染侧栏与状态栏。
+                //
+                // 放在 `/agent/flow/:id` 而不是 `/agent/flow/:id` 的子路由下，是因为
+                // 它需要换一个外壳；写成 `/agent` 的子路由就会继承带侧栏的外壳。
+                // `:id` 放在 `/agent/flow` 之后，所以 `/agent/flow/run` 这条静态路由
+                // **必须排在它前面**（vue-router 按声明顺序匹配，静态优先于动态是它的
+                // 打分规则，但把静态写在前面能让读表的人一眼看出这个优先级）。
+                path: "/agent/flow/:id",
+                name: RouteName.agentFlowEditor,
+                component: () => import("../view/agent/FlowEditorView.vue"),
+                meta: {
+                    title: "编排器",
+                    icon: "Operation",
+                    chrome: "immersive",
+                    menu: "hidden",
+                    titleFrom: "id"
+                }
             },
 
             /* ── 历法 ─────────────────────────────────────────────────────── */
@@ -297,345 +268,40 @@ export const routes: AppRoute[] = [
                 path: "/calendar",
                 name: RouteName.calendar,
                 component: () => import("../view/CalendarView.vue"),
-                redirect: "/calendar/astronomy/entry",
-                meta: { title: "历法", icon: "Calendar" },
+                redirect: "/calendar/synodic",
+                meta: { title: "历法", icon: "Calendar", domain: "tool" },
                 children: [
-                    /* 天文历 */
                     {
-                        path: "/calendar/astronomy",
-                        name: RouteName.calendarAstronomy,
-                        redirect: "/calendar/astronomy/entry",
-                        meta: { title: "天文历", icon: "Star", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/astronomy/entry",
-                                name: RouteName.calendarAstronomyEntry,
-                                component: () => import("../view/calendar/astronomy/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "天文历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/astronomy/calendar",
-                                name: RouteName.calendarAstronomyCalendar,
-                                component: () => import("../view/calendar/astronomy/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "天文历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/astronomy/data",
-                                name: RouteName.calendarAstronomyData,
-                                component: () => import("../view/calendar/astronomy/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "天文历的历表数据"
-                                }
-                            }
-                        ]
-                    },
+                        // 八套历法 + 年表共用这一条。合法 `system` 与 `view` 的取值来自
+                        // `src/entity/calendar.ts` 的登记表；非法值**不重定向**，
+                        // 页面渲染 `ElResult` 空态并给出口——重定向会把拼错的地址掩盖掉。
+                        path: "/calendar/:system/:view?",
+                        name: RouteName.calendarSystem,
+                        component: () => import("../view/calendar/CalendarSystemView.vue"),
+                        meta: {
+                            title: "历法工作区",
+                            icon: "Calendar",
+                            description: "这套历法的简介、日历与数据",
+                            titleFrom: "system",
+                            keepAlive: true
+                        }
+                    }
+                ]
+            },
 
-                    /* 格里高丽历 */
+            /* ── 年表 ─────────────────────────────────────────────────────── */
+            {
+                path: "/chronology",
+                name: RouteName.chronology,
+                component: () => import("../view/ChronologyView.vue"),
+                redirect: "/chronology/timeline",
+                meta: { title: "年表", icon: "Memo", domain: "tool" },
+                children: [
                     {
-                        path: "/calendar/gregory",
-                        name: RouteName.calendarGregory,
-                        redirect: "/calendar/gregory/entry",
-                        meta: { title: "格里高丽历", icon: "Sunny", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/gregory/entry",
-                                name: RouteName.calendarGregoryEntry,
-                                component: () => import("../view/calendar/gregory/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "格里高丽历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/gregory/calendar",
-                                name: RouteName.calendarGregoryCalendar,
-                                component: () => import("../view/calendar/gregory/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "格里高丽历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/gregory/data",
-                                name: RouteName.calendarGregoryData,
-                                component: () => import("../view/calendar/gregory/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "格里高丽历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 木星历 */
-                    {
-                        path: "/calendar/jupiter",
-                        name: RouteName.calendarJupiter,
-                        redirect: "/calendar/jupiter/entry",
-                        meta: { title: "木星历", icon: "Opportunity", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/jupiter/entry",
-                                name: RouteName.calendarJupiterEntry,
-                                component: () => import("../view/calendar/jupiter/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "木星历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/jupiter/calendar",
-                                name: RouteName.calendarJupiterCalendar,
-                                component: () => import("../view/calendar/jupiter/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "木星历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/jupiter/data",
-                                name: RouteName.calendarJupiterData,
-                                component: () => import("../view/calendar/jupiter/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "木星历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 轩辕历 */
-                    {
-                        path: "/calendar/natural",
-                        name: RouteName.calendarNatural,
-                        redirect: "/calendar/natural/entry",
-                        meta: { title: "轩辕历", icon: "Guide", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/natural/entry",
-                                name: RouteName.calendarNaturalEntry,
-                                component: () => import("../view/calendar/natural/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "轩辕历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/natural/calendar",
-                                name: RouteName.calendarNaturalCalendar,
-                                component: () => import("../view/calendar/natural/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "轩辕历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/natural/data",
-                                name: RouteName.calendarNaturalData,
-                                component: () => import("../view/calendar/natural/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "轩辕历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 朔望历 */
-                    {
-                        path: "/calendar/synodic",
-                        name: RouteName.calendarSynodic,
-                        redirect: "/calendar/synodic/entry",
-                        meta: { title: "朔望历", icon: "MoonNight", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/synodic/entry",
-                                name: RouteName.calendarSynodicEntry,
-                                component: () => import("../view/calendar/synodic/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "朔望历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/synodic/calendar",
-                                name: RouteName.calendarSynodicCalendar,
-                                component: () => import("../view/calendar/synodic/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "朔望历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/synodic/data",
-                                name: RouteName.calendarSynodicData,
-                                component: () => import("../view/calendar/synodic/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "朔望历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 干支历 */
-                    {
-                        path: "/calendar/tree",
-                        name: RouteName.calendarTree,
-                        redirect: "/calendar/tree/entry",
-                        meta: { title: "干支历", icon: "Connection", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/tree/entry",
-                                name: RouteName.calendarTreeEntry,
-                                component: () => import("../view/calendar/tree/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "干支历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/tree/calendar",
-                                name: RouteName.calendarTreeCalendar,
-                                component: () => import("../view/calendar/tree/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "干支历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/tree/data",
-                                name: RouteName.calendarTreeData,
-                                component: () => import("../view/calendar/tree/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "干支历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 回归历 */
-                    {
-                        path: "/calendar/tropical",
-                        name: RouteName.calendarTropical,
-                        redirect: "/calendar/tropical/entry",
-                        meta: { title: "回归历", icon: "Compass", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/tropical/entry",
-                                name: RouteName.calendarTropicalEntry,
-                                component: () => import("../view/calendar/tropical/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "回归历的规则、建元与换算"
-                                }
-                            },
-                            {
-                                path: "/calendar/tropical/calendar",
-                                name: RouteName.calendarTropicalCalendar,
-                                component: () => import("../view/calendar/tropical/CalendarView.vue"),
-                                meta: {
-                                    title: "日历",
-                                    icon: "Grid",
-                                    description: "回归历的年 / 月 / 日视图"
-                                }
-                            },
-                            {
-                                path: "/calendar/tropical/data",
-                                name: RouteName.calendarTropicalData,
-                                component: () => import("../view/calendar/tropical/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "回归历的历表数据"
-                                }
-                            }
-                        ]
-                    },
-
-                    /* 年表与节气表没有"日历"页：它们是表，不是一个历法体系的年月视图 */
-                    {
-                        path: "/calendar/chronology",
-                        name: RouteName.calendarChronology,
-                        redirect: "/calendar/chronology/entry",
-                        meta: { title: "年表", icon: "Memo", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/chronology/entry",
-                                name: RouteName.calendarChronologyEntry,
-                                component: () => import("../view/calendar/chronology/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "年表的口径与收录范围"
-                                }
-                            },
-                            {
-                                path: "/calendar/chronology/data",
-                                name: RouteName.calendarChronologyData,
-                                component: () => import("../view/calendar/chronology/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "朝代、年号与事件的年表数据"
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        path: "/calendar/climate",
-                        name: RouteName.calendarClimate,
-                        redirect: "/calendar/climate/entry",
-                        meta: { title: "节气表", icon: "Sunny", menu: false },
-                        children: [
-                            {
-                                path: "/calendar/climate/entry",
-                                name: RouteName.calendarClimateEntry,
-                                component: () => import("../view/calendar/climate/EntryView.vue"),
-                                meta: {
-                                    title: "简介",
-                                    icon: "Notebook",
-                                    description: "节气与物候的划分依据"
-                                }
-                            },
-                            {
-                                path: "/calendar/climate/data",
-                                name: RouteName.calendarClimateData,
-                                component: () => import("../view/calendar/climate/DataView.vue"),
-                                meta: {
-                                    title: "数据",
-                                    icon: "DataLine",
-                                    description: "节气、物候的时刻表"
-                                }
-                            }
-                        ]
+                        path: "/chronology/:page",
+                        name: RouteName.chronologyPage,
+                        component: () => import("../view/chronology/ChronologyPage.vue"),
+                        meta: { title: "年表", icon: "Memo", titleFrom: "page", keepAlive: true }
                     }
                 ]
             },
@@ -646,125 +312,53 @@ export const routes: AppRoute[] = [
                 name: RouteName.numerology,
                 component: () => import("../view/NumerologyView.vue"),
                 redirect: "/numerology/wiki",
-                meta: { title: "命理", icon: "MagicStick" },
+                meta: { title: "命理", icon: "MagicStick", domain: "tool" },
                 children: [
                     {
-                        path: "/numerology/wiki",
-                        name: RouteName.numerologyWiki,
-                        component: () => import("../view/numerology/WikiView.vue"),
-                        meta: {
-                            title: "命理百科",
-                            icon: "Reading",
-                            description: "术语、流派与推演方法的总览"
-                        }
-                    },
-                    {
-                        path: "/numerology/bazi",
-                        name: RouteName.numerologyBazi,
-                        component: () => import("../view/numerology/BaziView.vue"),
-                        meta: {
-                            title: "八字排盘",
-                            icon: "Coin",
-                            description: "以出生时刻排出四柱与大运"
-                        }
-                    },
-                    {
-                        path: "/numerology/ziwei",
-                        name: RouteName.numerologyZiwei,
-                        component: () => import("../view/numerology/ZiweiView.vue"),
-                        meta: {
-                            title: "紫微斗数",
-                            icon: "Star",
-                            description: "安十二宫与诸星，推演命盘"
-                        }
-                    },
-                    {
-                        path: "/numerology/qizheng",
-                        name: RouteName.numerologyQizheng,
-                        component: () => import("../view/numerology/QizhengView.vue"),
-                        meta: {
-                            title: "七政四余",
-                            icon: "Opportunity",
-                            description: "日月五星与四余的躔度"
-                        }
-                    },
-                    {
-                        path: "/numerology/gua",
-                        name: RouteName.numerologyGua,
-                        component: () => import("../view/numerology/GuaView.vue"),
-                        meta: {
-                            title: "卦象分析",
-                            icon: "Connection",
-                            description: "起卦、装卦与卦象解读"
-                        }
-                    },
-                    {
-                        path: "/numerology/horoscope",
-                        name: RouteName.numerologyHoroscope,
-                        component: () => import("../view/numerology/HoroscopeView.vue"),
-                        meta: {
-                            title: "星盘",
-                            icon: "Compass",
-                            description: "以天文坐标绘制星盘"
-                        }
+                        path: "/numerology/:page",
+                        name: RouteName.numerologyPage,
+                        component: () => import("../view/numerology/NumerologyPage.vue"),
+                        meta: { title: "命理", icon: "MagicStick", titleFrom: "page", keepAlive: true }
                     }
                 ]
             },
 
-            /* ── 年 ───────────────────────────────────────────────────────── */
+            /* ── 数据 ─────────────────────────────────────────────────────── */
             {
-                path: "/year",
-                name: RouteName.year,
-                component: () => import("../view/YearView.vue"),
-                redirect: "/year/tropical",
-                meta: { title: "年", icon: "Timer" },
+                path: "/data",
+                name: RouteName.data,
+                component: () => import("../view/DataView.vue"),
+                redirect: "/data/browse",
+                meta: { title: "数据", icon: "DataBoard", domain: "tool" },
                 children: [
                     {
-                        path: "/year/tropical",
-                        name: RouteName.yearTropical,
-                        component: () => import("../view/year/TropicalView.vue"),
-                        meta: {
-                            title: "回归年",
-                            icon: "Timer",
-                            description: "太阳两次过春分点的时间长度"
-                        }
+                        path: "/data/:page",
+                        name: RouteName.dataPage,
+                        component: () => import("../view/data/DataPage.vue"),
+                        meta: { title: "数据", icon: "DataBoard", titleFrom: "page", keepAlive: true }
                     }
                 ]
             },
 
-            /* ── 性能 ─────────────────────────────────────────────────────── */
+            /* ── 系统 ─────────────────────────────────────────────────────── */
             {
-                path: "/performance",
-                name: RouteName.performance,
-                component: () => import("../view/PerformanceView.vue"),
-                redirect: "/performance/overview",
-                meta: { title: "性能", icon: "Monitor" },
+                path: "/system",
+                name: RouteName.system,
+                component: () => import("../view/SystemView.vue"),
+                redirect: "/system/performance",
+                meta: { title: "系统", icon: "Setting", domain: "system" },
                 children: [
                     {
-                        path: "/performance/overview",
-                        name: RouteName.performanceOverview,
-                        component: () => import("../view/performance/OverviewView.vue"),
-                        meta: {
-                            title: "概览",
-                            icon: "Histogram",
-                            description: "查询耗时、缓存命中与内存占用"
-                        }
-                    },
-                    {
-                        path: "/performance/datasource",
-                        name: RouteName.performanceDatasource,
-                        component: () => import("../view/performance/DatasourceView.vue"),
-                        meta: {
-                            title: "数据信息",
-                            icon: "DataBoard",
-                            description: "22 个分库的表结构、行数与构建时间"
-                        }
+                        path: "/system/:page",
+                        name: RouteName.systemPage,
+                        component: () => import("../view/system/SystemPage.vue"),
+                        meta: { title: "系统", icon: "Setting", titleFrom: "page", keepAlive: true }
                     }
                 ]
             },
 
             {
-                // 兜底：写错的地址回到概览。目标写路径而不是 `{ name }`，
+                // 兜底：写错的地址回到工作台。目标写路径而不是 `{ name }`，
                 // 否则当前匹配出的 `pathMatch` 会被带过去并触发一条 router 警告。
                 path: "/:pathMatch(.*)*",
                 name: RouteName.fallback,

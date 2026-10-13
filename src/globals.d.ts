@@ -144,5 +144,33 @@ declare module "vue-router" {
         menu?: boolean | "hidden";
         /** 页面说明，用于菜单项提示与页头副标题 */
         description?: string;
+        /**
+         * 侧栏分区的归属。
+         *
+         * `docs/ui-architecture.md` §4.4：高亮**不再依赖 `route.path` 前缀匹配**——
+         * 那样 `/calendar/synodic/data` 与 `/calendar/gregory/data` 会互相干扰，
+         * 而分区是路由表里的显式声明。只需在域一级写一次，子路由由 vue-router 的
+         * `meta` 合并自动继承。
+         */
+        domain?: "workspace" | "tool" | "system";
+        /**
+         * 是否渲染侧栏与状态栏。
+         *
+         * - `"main"`（缺省）：常规三区布局；
+         * - `"immersive"`：全宽，给工作流编排器的画布用（侧栏 220px 会显著压窄画布）。
+         */
+        chrome?: "main" | "immersive";
+        /**
+         * 标题取自参数或数据，而不是 `meta.title` 的字面量。
+         *
+         * 参数化路由（`/calendar/:system/:view?`、`/agent/flow/:id`）没法在表里写死标题，
+         * 页面拿到数据后写回 `document.title`；页头的当前页胶囊与面包屑读这个字段决定
+         * "该不该用 `meta.title`"。取值即参数名。
+         */
+        titleFrom?: string;
+        /**
+         * 换页时是否保留组件实例（页内切换器要保留滚动位置与筛选状态）。
+         */
+        keepAlive?: boolean;
     }
 }

@@ -9,6 +9,10 @@
  * 本文件**没有运行时依赖**：主进程与 preload 取常量，渲染进程只取类型。
  */
 
+import type { DesktopWorkflowApi } from "./workflow-api";
+import type { DesktopOsApi } from "./os-api";
+import type { DesktopCalendarApi } from "./calendar-api";
+
 /** 主进程↔渲染进程通道名。改动这里等于同时改三处，不会再出现拼错通道名。 */
 export const WindowChannels = {
     /** 窗口控制命令（渲染 → 主，单向） */
@@ -64,4 +68,10 @@ export interface DesktopWindowApi {
 /** preload 挂到 `window.desktop` 上的全部能力。 */
 export interface DesktopApi {
     window: DesktopWindowApi;
+    /** dsh-os 工作流执行（契约见 `shared/workflow-api.ts`） */
+    workflow: DesktopWorkflowApi;
+    /** dsh-os 单动词钩子（契约见 `shared/os-api.ts`） */
+    os: DesktopOsApi;
+    /** 22 个分库的只读查询（契约见 `shared/calendar-api.ts`） */
+    calendar: DesktopCalendarApi;
 }

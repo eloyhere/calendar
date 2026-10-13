@@ -8,7 +8,7 @@
  * 契约说明：repository.ts 的 Repository 是同步契约，而数据访问层的驱动是异步的
  * （Sqlite.query 返回 Promise），二者无法同时满足，故本层实现同形的异步接口
  * AsyncRepository：方法名、参数、返回类型与 Repository 一一对应，只把返回值包成 Promise。
- * epoch：世：30 朔望月。建元当天为第 1 世。
+ * epoch：世：30 朔望年。建元所在的朔望年为第 1 世。
  *   由 synodic_month 每 30 个一组推导，首尾都对齐工作簿。
  */
 import type { Entity } from "../entity/entity";

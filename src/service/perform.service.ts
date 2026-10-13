@@ -3,7 +3,7 @@ import type { EntityRepository, Page } from "./service";
 import { AbstractService } from "./service";
 
 /**
- * 运 service（表 perform，约 33 行）：建元当天为第 1 运，1 运 = 12 世 = 360 朔望月。
+ * 运 service（表 perform，66 行）：建元所在的朔望年为第 1 运，1 运 = 12 世 = 360 朔望年。
  * 实体只声明了 Proleptic 的公共列与 epoches，父列 encounter 以 src/sql/perform.sql 为准。
  */
 export class PerformService extends AbstractService<bigint, Perform> {

@@ -5,6 +5,11 @@ out
 .eslintcache
 *.log*
 
+.temporary/
+out-verify/
+shared
+0/
+
 # 生成的数据：由 calendar.xlsx 重新生成，体积远超 GitHub 单文件限制
 #   python database/build.py     -> src/sqlite/<entity>.sqlite
 #   python database/sqlfiles.py  -> database/sql/<entity>/{table,data}.sql

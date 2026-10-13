@@ -8,24 +8,21 @@
         lengthOf<X>Month: bigint;     // 各历法在本纪年里的月数
     }
 
-`calendar.xlsx` 不含纪年数据，因此本表按"**一个朔望年一条纪年**"物化：
+`calendar.xlsx` 不含纪年数据，因此本表按"**一个朔望年一条纪年**"物化，
+并把它与**八部历法的年表一一对应**：
 
 - 时间区间 = 该朔望年的 `[start, end]`，与 `synodic_calendar_year` 完全一致；
-- `epoch`  = 该年首所属的世（1 世 = 30 朔望月，见 `database/epoch.py`）；
-- `synodic`= 该朔望年；
-- `lengthOfSynodicMonth` = 该年的朔望月数（12 或 13）；
-- `relative` = 本纪年在所属世内的序号（`Proleptic`：父级内的相对序列数）；一个世跨 2–3 个
-  朔望年，故该值通常是 1–3；
+- `epoch`  = 该年所属的世（**1 世 = 30 朔望年**，见 `database/epoch.py`）；
+- 八列年（`astronomy` … `synodic`）各取「**区间包含本纪年**」的那一年：
+  每部历法的年都平铺整条时间轴、互不重叠，故对应唯一；
+- 八列 `lengthOf<X>Month` 是那一年的月数，与各年表的 `lengthOfMonth` 同值
+  （格里高利 / 干支 / 回归 / 木星恒为 12，节气纪年恒为 24，朔望年与轩辕纪年 12 或 13）；
+- `relative` = 本纪年在所属世内的序号（`Proleptic`：父级内的相对序列数）；
+  一个世恰好含 30 个朔望年，故该值是 1–30（首尾不足 30 的世除外）；
 - `absolute` = 全局纪年序号，按时间升序从 1 起。
 
-实体里另外七部历法（`astronomy` / `climate` / …）的年份与月数没有在表结构里落地 ——
-`src/service/chronology.service.ts` 已写明"实体声明了 8 种纪年，但表里只有 synodic 一种"，
-`database/schema.py` 的 `chronology` 也只声明了 `epoch` / `synodic` /
-`lengthOfSynodicMonth` 三个业务列（见 `docs/table.md` §chronology）。需要跨历法对照时，
-按时间区间 JOIN 同名分库即可。
-
-`epoch` / `synodic` 都是跨库外键，列里放业务键，由 `database/store.py` 的 `write_table`
-换算成父表真实的自增 identity。
+八列年与 `epoch` 都是跨库外键，列里放业务键（各年的 `start`、世的全局序号），
+由 `database/store.py` 的 `write_table` 换算成父表真实的自增 identity。
 """
 
 from __future__ import annotations
@@ -33,9 +30,10 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING, Iterator
 
+from . import calendars
 from .core import iter_rows
 from .schema import Table, by_module, emit_sqlite
-from .source import Workbook
+from .source import YEAR_INDEX_OFFSET, Workbook
 
 if TYPE_CHECKING:  # 仅用于类型标注：store.py 在函数内 import 本模块，运行时不能互相导入
     from .store import Stores
@@ -44,8 +42,23 @@ if TYPE_CHECKING:  # 仅用于类型标注：store.py 在函数内 import 本模
 TABLES: list[Table] = by_module("chronology")
 TABLE: Table = TABLES[0]
 
-#: 一个世含多少个朔望月（`database/epoch.py` 的 ASSEMBLY.size）
-MONTHS_PER_EPOCH = 30
+#: 一个世含多少个朔望年（`database/epoch.py` 的 ASSEMBLY.size）
+YEARS_PER_EPOCH = 30
+
+#: 纪年要一一对应的八部历法（除 synodic 外）：列名 -> 年表所属模块。
+#: 顺序与 `src/entity/chronology.ts` 一致，`synodic` 排在最后、由源表的纪年块提供。
+CALENDARS: tuple[tuple[str, str], ...] = (
+    ("astronomy", "astronomy.calendar"),
+    ("climate", "climate"),
+    ("gregory", "gregory.calendar"),
+    ("jupiter", "jupiter.calendar"),
+    ("natural", "natural.calendar"),
+    ("tree", "tree.calendar"),
+    ("tropical", "tropical.calendar"),
+)
+
+#: 八列年在表里的列名，顺序即写入顺序
+YEAR_COLUMNS: tuple[str, ...] = tuple(name for name, _ in CALENDARS) + ("synodic",)
 
 
 def create(connection: sqlite3.Connection) -> None:
@@ -54,12 +67,12 @@ def create(connection: sqlite3.Connection) -> None:
         connection.executescript(emit_sqlite(table))
 
 
-def _epoch_order(month_index: int) -> int:
-    """全局朔望月序号 -> 该月所属的世序号（建元当月所在世为 1，可为负）。"""
-    return (month_index - 1) // MONTHS_PER_EPOCH + 1
+def _epoch_order(year_label: int) -> int:
+    """纪年块标签 -> 该朔望年所属的世序号（建元所在世为 1，可为负）。"""
+    return (year_label + YEAR_INDEX_OFFSET - 1) // YEARS_PER_EPOCH + 1
 
 
-def _years(workbook: Workbook) -> list[tuple[int, int, int, int]]:
+def _synodic_years(workbook: Workbook) -> list[tuple[int, int, int, int]]:
     """按时间升序的朔望年：`[(年首, 年尾, 世序号, 月数)]`。"""
     grouped: dict[int, list[int]] = {}
     for position, month in enumerate(workbook.months):
@@ -67,37 +80,62 @@ def _years(workbook: Workbook) -> list[tuple[int, int, int, int]]:
     rows: list[tuple[int, int, int, int]] = []
     for label in sorted(grouped):
         positions = grouped[label]
-        first_index = workbook.month_index(positions[0])
         rows.append(
             (
                 workbook.months[positions[0]].absolute,
                 workbook.month_ends[positions[-1]],
-                _epoch_order(first_index),
+                _epoch_order(label),
                 len(positions),
             )
         )
     return rows
 
 
-def rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
-    """产出全部纪年：一个朔望年一条。
+def _axes(workbook: Workbook) -> dict[str, list[tuple[int, int, int, int]]]:
+    """八部历法各一条年轴：`[(年首, 年尾, 年的业务键, 月数)]`，按时间升序。
 
-    `identity` 放年首瞬间作占位（写入时剔除）；`epoch` / `synodic` 放业务键
-    （世的全局序号、朔望年的首瞬间），写入时换算成父表的自增 identity。
+    年的业务键一律取年的 `start`（见 `database/identity.py` 的 `BUSINESS_KEY`）。
     """
+    axes: dict[str, list[tuple[int, int, int, int]]] = {}
+    for name, module in CALENDARS:
+        axes[name] = [
+            (unit.start, unit.end, unit.start, count)
+            for unit, count in calendars.years_with_months(workbook, module)
+        ]
+    axes["synodic"] = [
+        (start, end, start, months) for start, end, _, months in _synodic_years(workbook)
+    ]
+    return axes
+
+
+def rows(workbook: Workbook) -> Iterator[tuple[int, ...]]:
+    """产出全部纪年：一个朔望年一条，每部历法各挂上包含它的那一年。
+
+    `identity` 放年首瞬间作占位（写入时剔除）；`epoch` 与八列年放业务键，
+    写入时换算成父表的自增 identity。八条年轴与朔望年都按时间升序，
+    因此一次双指针扫描即可全部对齐。
+    """
+    axes = _axes(workbook)
+    pointers = {name: 0 for name in YEAR_COLUMNS}
     within: dict[int, int] = {}
-    for absolute, (start, end, epoch, months) in enumerate(_years(workbook), start=1):
+
+    for absolute, (start, end, epoch, _) in enumerate(_synodic_years(workbook), start=1):
         within[epoch] = within.get(epoch, 0) + 1
-        yield (
-            start,                       # identity 占位，写入时剔除
-            within[epoch],               # relative：本纪年在所属世内的序号
-            absolute,                    # absolute：全局纪年序号
-            epoch,                       # epoch：所属世（业务键 = 世的全局序号）
-            start,                       # synodic：对应朔望年（业务键 = 年首瞬间）
-            months,                      # lengthOfSynodicMonth
-            start,
-            end,
-        )
+        values: list[int] = [start, within[epoch], absolute, epoch]
+        for name in YEAR_COLUMNS:
+            axis = axes[name]
+            index = pointers[name]
+            while index < len(axis) and axis[index][1] < start:
+                index += 1
+            pointers[name] = index
+            if index < len(axis) and axis[index][0] <= end:
+                _, _, key, count = axis[index]
+            else:  # 理论到不了：年轴平铺整条时间轴，纪年区间必落在某一年内
+                key, count = 0, 0
+            values.append(key)
+            values.append(count)
+        values.extend([start, end])
+        yield tuple(values)
 
 
 def load(connection: sqlite3.Connection, stores: "Stores", workbook: Workbook) -> dict[str, int]:

@@ -1,7 +1,8 @@
 """natural.calendar：轩辕纪年。
 
-轩辕纪年（年 + 月）：以建元 -2696-03-11 01:45:49 为 1 年 1 月 1 日，朔望月定月、建元定年；
-本轮只建表、不写行。
+轩辕纪年（年 + 月）：以建元 -2696-03-11 01:45:49 为 1 年 1 月 1 日，朔望月定月、建元定年 ——
+建元当天恰好是纪年块 -2696 的正月月首，故年即纪年块（年号 = 标签 + 2697）、月即朔望月；
+换算法则见 `database/calendars.py` 的 `natural.calendar` 一项。
 
     python scripts/database/natural_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

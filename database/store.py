@@ -4,7 +4,7 @@
     src/sqlite/synodic.sqlite       encounter.sqlite    astronomy.sqlite   …
 
 一个实体一个文件、一个文件一张（或同一实体内紧密相关的几张）表，
-与 `src/entity/*.ts`、`src/sql/query/*.sql`、`src/sqlite/*.sql` 逐一对齐。
+与 `src/entity/*.ts`、`src/sql/*.sql`、`src/sqlite/*.sqlite` 逐一对齐。
 
 构建顺序即依赖顺序，后建的文件从先建的实体取键：
 `temporal` 提供全库时间点，`synodic_month` 提供给元/会/运/世的切分。
@@ -97,7 +97,12 @@ def remapper(stores: Stores, table: Table) -> Callable[[Sequence[Any]], Sequence
 
     子表的 `references` 形如 `synodic_calendar_year.identity`，而该列里存的是
     业务键（例如纪年块标签），故按父表的业务键换成真实的自增 identity。
-    没有外键、或业务键查不到时原样返回（0 表示"不涉及"）。
+
+    **只有 `None` 视为"没有值"**：业务键 `0` 是合法的 —— 元/会/运/世四层的业务键是
+    "全局序号"，建元所在元就是第 0 元（`primary.absolute = 0`），第 0 会、第 0 运、
+    第 0 世同理。若把 0 也当成"不涉及"跳过，这些行的外键会全部落成 0，
+    而父表里根本没有 identity = 0 的行。查不到的业务键（例如 `event.dynasty` 里
+    未知朝代写的 0，而 `dynasty` 的业务键是起始年的绝对时间）自然保持原值。
     """
     foreign = [column for column in table.columns if column.references]
     if not foreign:
@@ -113,7 +118,7 @@ def remapper(stores: Stores, table: Table) -> Callable[[Sequence[Any]], Sequence
         values = list(row)
         for index, parent in positions:
             key = values[index]
-            if key in (None, 0):
+            if key is None:
                 continue
             resolved = stores.identities.resolve(parent, key)
             if resolved is not None:
@@ -180,6 +185,96 @@ def write_table(
     return written
 
 
+def ensure_parent_identities(stores: Stores, module: str) -> None:
+    """保证本模块要用的父级 identity 已登记。
+
+    跨库外键换算（`remapper()`）要求「父表业务键 -> identity」已经在
+    `stores.identities` 里。整批建库时父表刚写完就由 `seed_from_table()` 登记好了；
+    只建子集时（`initialise.py --only`、单独运行某个实体脚本）父表没被回读过，
+    这里补一次，两条路：
+
+    1. 父库文件已存在 —— 只读打开，按它的业务键列回读（`synodic` -> `chronology`
+       这类跨层依赖走这条）；
+    2. 父库不存在、但父实体有 `ASSEMBLY` —— 按 `Assembly.groups()` 现算
+       （层级 identity 完全由工作簿决定，与父库是否存在无关）。
+
+    缺这一步时 `remapper()` 查不到父级，外键会整列保留业务键原值
+    （例如 `chronology.synodic` 里会留下年首绝对时间，而不是 `synodic_calendar_year`
+    的 identity），`database/verify.py` 的跨库核对就会报错。
+    """
+    import importlib
+
+    from .schema import TABLES
+
+    module_of = {table.name: table.module for table in TABLES}
+    for table in by_module(module):
+        for column in table.columns:
+            if not column.references:
+                continue
+            parent_table = column.references.split(".")[0]
+            if stores.identities.known(parent_table):
+                continue
+            _seed_parent(stores, parent_table, module_of.get(parent_table), importlib)
+
+
+def _seed_parent(
+    stores: Stores, parent_table: str, parent_module: str | None, importlib: object
+) -> None:
+    """登记一张父表的「业务键 -> identity」：先回读父库，再退回 ASSEMBLY 现算。"""
+    if parent_module is None:
+        return
+
+    key_name = stores.identities.business_key_of(parent_table)
+    path = Path(stores.out_dir) / f"{parent_module}.sqlite"
+    if path.exists():
+        rows: list[tuple[Any, Any]] = []
+        try:
+            handle = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+            try:
+                rows = handle.execute(
+                    f'SELECT "{key_name}", "identity" FROM "{parent_table}"'
+                ).fetchall()
+            finally:
+                handle.close()
+        except sqlite3.Error:
+            rows = []
+        if rows:
+            for key, identity in rows:
+                stores.identities.record(parent_table, key, int(identity))
+            return
+
+    package = _import_module(importlib, parent_module)
+    if package is None:
+        return
+    assembly = getattr(package, "ASSEMBLY", None)
+    if assembly is None:
+        return
+    # 层级表的行按全局序号升序插入，分库自增 identity 就是 1 起的位置；
+    # `Group.identity` 是首个月首的绝对时间，那是 `start` 列的值，不是 identity。
+    stores.identities.seed_orders(
+        parent_table,
+        {
+            group.order: position
+            for position, group in enumerate(assembly.groups(stores.workbook), start=1)
+        },
+    )
+
+
+def _import_module(importlib: object, module: str) -> object | None:
+    """按实体模块名 import `database/<module>.py`。
+
+    七部派生历法的实体名带点（`astronomy.calendar`），而 Python 模块去掉 `.calendar`
+    后缀（`database/astronomy.py`）；其余同名。import 不到时返回 None ——
+    只有元/会/运/世四层有 `ASSEMBLY`，其余父表靠回读父库，本就不该在这里 import。
+    """
+    for name in (module, module.split(".")[0]):
+        try:
+            return importlib.import_module(f".{name}", __package__)  # type: ignore[attr-defined]
+        except ImportError:
+            continue
+    return None
+
+
 def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> dict[str, int]:
     """写入某个实体的全部行数据。"""
     from . import (
@@ -207,6 +302,7 @@ def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> 
         week,
     )
 
+    ensure_parent_identities(stores, module)
     workbook = stores.workbook
     history = stores.history
     counts: dict[str, int] = {}
@@ -264,7 +360,8 @@ def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> 
     elif module == "event":
         counts["event"] = write_table(connection, stores, event.TABLE, event.rows(history))
     elif module == "chronology":
-        counts["chronology"] = chronology.load(connection, stores, workbook)
+        # 与 climate 一样返回「表名 -> 行数」的字典，故用 update 而不是赋值
+        counts.update(chronology.load(connection, stores, workbook))
     else:
         module_object = {
             "astronomy.calendar": astronomy,
@@ -283,7 +380,8 @@ def load_module(connection: sqlite3.Connection, stores: Stores, module: str) -> 
     return counts
 
 
-#: 建库顺序：时间 -> 候/相/旬/周 -> 朔望年月 -> 世运会展 -> 朝代/年号/人物/事件 -> 其它历法
+#: 建库顺序：时间 -> 候/相/旬/周 -> 朔望年月 -> 世运会展 -> 朝代/年号/人物/事件
+#: -> 七部派生历法 -> 纪年
 STORE_ORDER: list[str] = [
     # 顺序即依赖顺序：父表先建，子表的跨库外键才解得开 business_key -> identity。
     # temporal：全库时间坐标系，主键就是绝对时间本身
@@ -305,14 +403,15 @@ STORE_ORDER: list[str] = [
     "era",
     "person",
     "event",
-    "chronology",
-    # 七部派生历法（行数据待换算，只有表结构）
+    # 七部派生历法：年 / 月表
     "astronomy.calendar",
     "gregory.calendar",
     "jupiter.calendar",
     "natural.calendar",
     "tree.calendar",
     "tropical.calendar",
+    # chronology 的八列年分别指向上面每一部历法的年表，故必须排在它们之后
+    "chronology",
 ]
 
 
@@ -392,7 +491,7 @@ def fill_module_associations(
                 module=module,
                 source_name=stores.source_name,
                 digest=stores.digest,
-                counts={name: counts.get(name, 0) for name in tables},
+                counts={table.name: counts.get(table.name, 0) for table in tables},
             )
         finally:
             connection.close()
@@ -411,7 +510,7 @@ def fill_module_associations(
         finally:
             connection.close()
 
-    return {name: counts.get(name, 0) for name in tables}
+    return {table.name: counts.get(table.name, 0) for table in tables}
 
 
 def finish_associations(
@@ -473,6 +572,9 @@ def _build_one(
         path.unlink()
 
     ensure_derived(stores, module)
+    # 只建子集时（--only / 单个实体脚本）父表可能还没回读过，这里按父库文件补登记；
+    # `ensure_parent_identities()` 要靠 out_dir 找父库。
+    stores.out_dir = out_dir
     connection = connect(str(path))
     try:
         tables = create_module(connection, module)

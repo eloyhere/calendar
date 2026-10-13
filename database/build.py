@@ -4,9 +4,9 @@
 
 产物与实体一一对应：
 
-    src/sqlite/<entity>.sqlite   每个实体一个 SQLite 文件
-    src/sql/query/<entity>.sql   每个实体的查询语句（由 sqlfiles.py 生成）
-    src/sql/data/<entity>.sql    每个实体的行数据导出（由 datafiles.py 生成）
+    src/sqlite/<entity>.sqlite        每个实体一个 SQLite 文件
+    src/sql/<entity>.sql              每个实体的查询语句（由 sqlfiles.py 生成）
+    database/sql/<entity>/data.sql    每个实体的行数据导出（由 datafiles.py 生成）
 
 分库之间需要跨表查询时，用 `database/combine.py` 合并成全库。
 """

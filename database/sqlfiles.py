@@ -15,8 +15,10 @@
 
 from __future__ import annotations
 
+import sqlite3
 import sys
 from pathlib import Path
+from typing import Any, Callable, Sequence
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -69,13 +71,14 @@ ORDER: list[str] = [
     "era",
     "person",
     "event",
-    "chronology",
     "astronomy.calendar",
     "gregory.calendar",
     "jupiter.calendar",
     "natural.calendar",
     "tree.calendar",
     "tropical.calendar",
+    # chronology 的八列年指向上面每一部历法的年表，故列在最后
+    "chronology",
 ]
 
 
@@ -302,15 +305,93 @@ def generate(root: Path, *, data: bool = True) -> list[Path]:
     return written
 
 
+def identity_resolver(root: Path) -> Callable[[Table], Callable[[Sequence[Any]], Sequence[Any]]]:
+    """`data.sql` 里的跨库外键也必须写成真实的 identity。
+
+    建库时 `database/store.py` 的 `write_table()` 会把业务键换成父表的自增 identity；
+    `data.sql` 若直接导出业务键（例如 `phenology.year` 写成纪年块首瞬间
+    `-230457018027`，而库里是 1..23500 的 identity），就和 `src/sqlite/*.sqlite`
+    对不上了。这里按 `database/identity.py` 的 `BUSINESS_KEY` 从**已建好的分库**
+    回读同一份映射，复用 `store.remapper()` 做同样的换算；父库不在时保持原值。
+
+    业务键就是 `identity` 的表（`temporal`）不建映射：换算前后相同，白白吃掉
+    上千万条内存。
+    """
+    from database.identity import Identities
+    from database.schema import TABLES
+    from database.store import remapper
+
+    identities = Identities()
+    module_of = {table.name: table.module for table in TABLES}
+    loaded: set[str] = set()
+
+    class _Context:
+        """`remapper()` 只用到 `identities`。"""
+
+    context = _Context()
+    context.identities = identities  # type: ignore[attr-defined]
+    cache: dict[str, Callable[[Sequence[Any]], Sequence[Any]]] = {}
+
+    def load(parent: str) -> None:
+        if parent in loaded:
+            return
+        loaded.add(parent)
+        key_name = identities.business_key_of(parent)
+        if key_name == "identity":
+            return
+        module = module_of.get(parent)
+        if module is None:
+            return
+        path = root / "src" / "sqlite" / f"{module}.sqlite"
+        if not path.exists():
+            return
+        handle = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+        try:
+            rows = handle.execute(
+                f'SELECT "{key_name}", "identity" FROM "{parent}"'
+            ).fetchall()
+        finally:
+            handle.close()
+        for key, identity in rows:
+            identities.record(parent, key, int(identity))
+
+    def of(table: Table) -> Callable[[Sequence[Any]], Sequence[Any]]:
+        if table.name not in cache:
+            for column in table.columns:
+                if column.references:
+                    load(column.references.split(".")[0])
+            cache[table.name] = remapper(context, table)  # type: ignore[arg-type]
+        return cache[table.name]
+
+    return of
+
+
 def write_data(root: Path, modules: list[str] | None = None) -> list[Path]:
-    """把各实体的行数据写成 `database/sql/<entity>/data.sql`。"""
+    """把各实体的行数据写成 `database/sql/<entity>/data.sql`。
+
+    工作簿与历史数据各只解析一次：`datafiles.pairs_of()` 缺省会自己解析源文件，
+    逐模块调用就会把 37 MB 的 `calendar.xlsx` 重解析十几遍，这里显式传入共享的源。
+    """
     from database import datafiles
+    from database.history import load_history
+    from database.source import read_workbook
 
     base = root / "database" / "sql"
     targets = modules or [name for name in datafiles.ORDER if name in ORDER]
     written: list[Path] = []
+    resolve = identity_resolver(root)
+    workbook = None
+    history = None
     for module in targets:
-        pairs = datafiles.pairs_of(module)
+        if module in datafiles.HISTORY_MODULES:
+            if history is None:
+                history = load_history()
+            source = history
+        else:
+            if workbook is None:
+                workbook = read_workbook(str(root / "calendar.xlsx"))
+            source = workbook
+        pairs = datafiles.pairs_of(module, source)
         if pairs is None:
             continue
         chunks = [
@@ -323,10 +404,17 @@ def write_data(root: Path, modules: list[str] | None = None) -> list[Path]:
             )
         ]
         for table, rows in pairs:
+            convert = resolve(table)
             chunks.append(f"-- 表 {table.name}")
             chunks.append(f"-- 列：{', '.join(table.column_names)}")
             chunks.append("")
-            chunks.extend(iter_rows(table, rows, rows_per_statement=100))
+            chunks.extend(
+                iter_rows(
+                    table,
+                    (convert(row) for row in rows),
+                    rows_per_statement=100,
+                )
+            )
             chunks.append("")
         path = base / module / "data.sql"
         path.write_text("\n".join(chunks), encoding="utf-8", newline="\n")

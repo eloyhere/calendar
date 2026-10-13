@@ -1,7 +1,7 @@
 """database.encounter：`encounter` 表（会）。
 
 对应 `src/entity/encounter.ts` 的 `Encounter`。建元当天为第 1 会，
-1 会 = 30 运 = 360 世 = 10800 朔望月。
+**1 会 = 30 运 = 360 世 = 10800 朔望年**。
 """
 
 from __future__ import annotations
@@ -13,8 +13,10 @@ from .hierarchy import Assembly, Result, install
 from .schema import Table
 from .source import Workbook
 
-#: 装配体：1 会 = 10800 朔望月，12 会 = 1 元
-ASSEMBLY: Assembly = install(module="encounter", size=10_800, parent_size=12, parent_module="primary")
+#: 装配体：1 会 = 10800 朔望年，12 会 = 1 元
+ASSEMBLY: Assembly = install(
+    module="encounter", size=10_800, parent_size=12, parent_module="primary", unit="year"
+)
 
 #: 本模块负责的表
 TABLES: list[Table] = ASSEMBLY.tables

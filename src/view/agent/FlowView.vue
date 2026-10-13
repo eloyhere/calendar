@@ -9,7 +9,6 @@
  */
 
 import PageShell from "../../component/PageShell.vue";
-
 </script>
 
 <template>

@@ -1,12 +1,20 @@
 """database.hierarchy：元/会/运/世四层的公共实现。
 
 `primary.py`、`encounter.py`、`perform.py`、`epoch.py` 共用这里的 `install()`，
-因此四层表结构、行序、外键推导方式完全一致，只有"几个朔望月一组"不同：
+因此四层表结构、行序、外键推导方式完全一致，只有"几个**朔望年**一组"不同：
 
-    1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望月
-    1 会 = 30 运 = 360 世 = 10800 朔望月
-    1 运 = 12 世 = 360 朔望月
-    1 世 = 30 朔望月
+    1 元 = 12 会 = 360 运 = 4320 世 = 129600 朔望年
+    1 会 = 30 运 = 360 世 = 10800 朔望年
+    1 运 = 12 世 = 360 朔望年
+    1 世 = 30 朔望年
+
+口径以 `src/entity/*.ts` 为准（`epoch.ts` 的"1世=30朔望年"、`perform.ts` 的
+"1运=12世=360朔望年"、`encounter.ts` 的"1会=30运=360世=10800朔望年"、
+`primary.ts` 的"1元=12会=…=129600朔望年"）。
+
+切分单位是**朔望年**而不是朔望月：一个朔望年含 12 或 13 个朔望月，长度不固定，
+所以同一层各组含的月数并不恒定；但各组的 `start` / `end` 仍取首月月首与末月月末，
+落在 `temporal` 已有时间点上。`group_months()` 保留了按朔望月切分的旧口径备用。
 """
 
 from __future__ import annotations
@@ -17,7 +25,7 @@ from typing import Callable, Iterator, Mapping
 
 from .core import batch_write, count_rows, iter_rows
 from .schema import Table, by_module, emit_sqlite
-from .source import Group, Workbook, group_months
+from .source import Group, Workbook, group_months, group_years
 
 __all__ = ["Assembly", "Identities", "Result", "install"]
 
@@ -45,11 +53,14 @@ class Assembly:
         size: int,
         parent_size: int | None,
         parent_module: str | None,
+        unit: str = "year",
     ) -> None:
         self.module = module
         self.size = size
         self.parent_size = parent_size
         self.parent_module = parent_module
+        #: 切分单位：`year`（朔望年，实体口径）或 `month`（朔望月）
+        self.unit = unit
         self.tables: list[Table] = by_module(module)
         self.table: Table = self.tables[0]
 
@@ -62,7 +73,8 @@ class Assembly:
 
     def groups(self, workbook: Workbook) -> list[Group]:
         """本层的全部分组，按时间升序。"""
-        return list(group_months(workbook, self.size, self.parent_size))
+        split = group_years if self.unit == "year" else group_months
+        return list(split(workbook, self.size, self.parent_size))
 
     def identity_of(self, workbook: Workbook, order: int) -> int:
         """分组序号 -> identity。"""
@@ -134,6 +146,13 @@ def install(
     size: int,
     parent_size: int | None,
     parent_module: str | None,
+    unit: str = "year",
 ) -> Assembly:
-    """构建一个层级模块的装配体。"""
-    return Assembly(module=module, size=size, parent_size=parent_size, parent_module=parent_module)
+    """构建一个层级模块的装配体。`size` 的单位由 `unit` 决定（缺省朔望年）。"""
+    return Assembly(
+        module=module,
+        size=size,
+        parent_size=parent_size,
+        parent_module=parent_module,
+        unit=unit,
+    )

@@ -4,11 +4,10 @@
 
 检查五件事：
 
-1. 每个实体的 `.sqlite`、建表语句 `src/sqlite/<entity>.sql`、
-   查询语句 `src/sql/query/<entity>.sql`、实体 `src/entity/*.ts` 都在；
+1. 每个实体的 `.sqlite`、建表语句 `database/sql/<entity>/table.sql`、
+   查询语句 `src/sql/<entity>.sql`、实体 `src/entity/*.ts` 都在；
 2. 库内每张表的行数与 `_meta` 记录一致，列与 `database/schema.py` 一致；
-3. `src/sql/query/<entity>.sql` 的 12 条语句都能执行，且全条件绑 NULL 时返回
-   全表 —— 这是"可选参数语义"的关键验证；
+3. 查询语句的 12 条语句都能执行，且全条件绑 NULL 时返回全表 —— 这是"可选参数语义"的关键验证；
 4. 跨库关联成立：子表每个外键值都能在父库中找到；
 5. 区间端点成立：每张表 start/end 都能在 temporal 库中找到。
 """

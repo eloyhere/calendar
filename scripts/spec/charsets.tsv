@@ -1,0 +1,15 @@
+# dsh-os 字符集表（由 scripts/operation/build.mjs 重建，勿手改）
+iana	aliases	dotnet	unused	bom	fixed
+utf-8	utf8|unicode-1-1-utf-8	65001	-	EFBBBF	no
+utf-8-bom	-	65001	-	EFBBBF	no
+us-ascii	ascii|ansi_x3.4-1968	20127	-	-	yes
+iso-8859-1	latin1|iso8859-1	28591	-	-	yes
+windows-1252	cp1252	1252	-	-	yes
+gb2312	gbk|cp936|euc-cn	936	-	-	no
+gb18030	-	54936	-	-	no
+big5	cp950	950	-	-	no
+shift_jis	sjis|cp932	932	-	-	no
+euc-jp	-	51932	-	-	no
+euc-kr	cp949	51949	-	-	no
+utf-16le	utf-16|unicode	1200	-	FFFE	yes
+utf-16be	unicodefffe	1201	-	FEFF	yes

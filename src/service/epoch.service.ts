@@ -3,7 +3,7 @@ import type { EntityRepository, Page } from "./service";
 import { AbstractService } from "./service";
 
 /**
- * 世 service（表 epoch，约 970 行）：建元当天为第 1 世，1 世 = 30 朔望月。
+ * 世 service（表 epoch，784 行）：建元所在的朔望年为第 1 世，1 世 = 30 朔望年。
  * 实体只声明了 Proleptic 的公共列与 chronologies，父列 perform 以 src/sql/epoch.sql 为准。
  */
 export class EpochService extends AbstractService<bigint, Epoch> {

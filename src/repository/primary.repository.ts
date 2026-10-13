@@ -8,8 +8,8 @@
  * 契约说明：repository.ts 的 Repository 是同步契约，而数据访问层的驱动是异步的
  * （Sqlite.query 返回 Promise），二者无法同时满足，故本层实现同形的异步接口
  * AsyncRepository：方法名、参数、返回类型与 Repository 一一对应，只把返回值包成 Promise。
- * primary：元：12 会 = 360 运 = 4320 世 = 129600 朔望月。
- *   朔望月总数 290654 < 129600 × 3，故本库只有第 1 元；建表与推导逻辑保持通用。
+ * primary：元：12 会 = 360 运 = 4320 世 = 129600 朔望年。
+ *   朔望年总数 23500 < 129600，故本库只有第 0、1 元；建表与推导逻辑保持通用。
  */
 import type { Entity } from "../entity/entity";
 import type { Primary } from "../entity/primary";

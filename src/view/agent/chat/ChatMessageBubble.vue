@@ -6,9 +6,9 @@
  *
  * | 形态 | 长相 | 出现的模式 |
  * | ---- | ---- | ---------- |
- * | `text` | 头像 + 气泡正文 | 六个模式 |
+ * | `text` | 头像 + 气泡正文 | 五个模式 |
  * | `note` | 灰底小字，没有头像 | 新建对话（一句口径说明） |
- * | `citation` | 正文 + 可点的资料条目 | 历史对话 / 深度研究 / 课题研究 |
+ * | `citation` | 正文 + 可点的资料条目 | 深度研究 / 课题研究 |
  * | `todo` | 勾选列表，没有正文气泡 | 数据调研 / 课题研究 |
  *
  * ## 切分与对齐
@@ -93,7 +93,8 @@ const rootClass = computed((): string[] => [
                     :key="order"
                     :class="['chat-bubble__todo', { 'is-done': todo.done }]">
                     <ElIcon class="chat-bubble__todo-mark">
-                        <component :is="resolveIconComponent(todo.done ? 'CircleCheckFilled' : 'Clock')" />
+                        <component
+                            :is="resolveIconComponent(todo.done ? 'CircleCheckFilled' : 'Clock')" />
                     </ElIcon>
                     <span>{{ todo.text }}</span>
                 </li>
@@ -101,14 +102,13 @@ const rootClass = computed((): string[] => [
 
             <!-- 正文：段落 + 引用条目 -->
             <div v-else class="chat-bubble__content">
-                <p
-                    v-for="(part, order) in paragraphs"
-                    :key="order"
-                    class="chat-bubble__text">
+                <p v-for="(part, order) in paragraphs" :key="order" class="chat-bubble__text">
                     {{ part }}
                 </p>
 
-                <ul v-if="(props.message.citations ?? []).length > 0" class="chat-bubble__citations">
+                <ul
+                    v-if="(props.message.citations ?? []).length > 0"
+                    class="chat-bubble__citations">
                     <li
                         v-for="citation in props.message.citations ?? []"
                         :key="citation.source"

@@ -1,7 +1,7 @@
 """database.perform：`perform` 表（运）。
 
 对应 `src/entity/perform.ts` 的 `Perform`。建元当天为第 1 运，
-1 运 = 12 世 = 360 朔望月。
+**1 运 = 12 世 = 360 朔望年**。
 """
 
 from __future__ import annotations
@@ -13,8 +13,10 @@ from .hierarchy import Assembly, Result, install
 from .schema import Table
 from .source import Workbook
 
-#: 装配体：1 运 = 360 朔望月，30 运 = 1 会
-ASSEMBLY: Assembly = install(module="perform", size=360, parent_size=30, parent_module="encounter")
+#: 装配体：1 运 = 360 朔望年，30 运 = 1 会
+ASSEMBLY: Assembly = install(
+    module="perform", size=360, parent_size=30, parent_module="encounter", unit="year"
+)
 
 #: 本模块负责的表
 TABLES: list[Table] = ASSEMBLY.tables

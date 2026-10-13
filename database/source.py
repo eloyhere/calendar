@@ -12,15 +12,30 @@
 
 from __future__ import annotations
 
+import bisect
 import re
 from dataclasses import dataclass, field
 from typing import Any, Iterator, Sequence
 
 from .core import absolute_of, day_number, parse_timestamp, sheet_span, worksheet_order
 
-__all__ = ["Group", "Month", "Term", "Workbook", "group_months", "read_workbook"]
+__all__ = [
+    "Group",
+    "Month",
+    "Term",
+    "Workbook",
+    "YEAR_INDEX_OFFSET",
+    "group_months",
+    "group_years",
+    "read_workbook",
+]
 
 MONTH_NAME = re.compile(r"^(闰)?(正月|二月|三月|四月|五月|六月|七月|八月|九月|十月|冬月|腊月)(大|小)$")
+
+#: 朔望年的全局年号相对源表纪年块标签的偏移：
+#: 建元 -2696-03-11 01:45:49 当天正是纪年块 -2696 的正月月首，故 `-2696 + 2697 = 1`，
+#: 也就是说「建元所在的朔望年」是第 1 年。元/会/运/世四层都按这个年号切分。
+YEAR_INDEX_OFFSET = 2697
 
 #: 月名中的序数：正月=1 … 腊月=12
 ORDINALS: dict[str, int] = {
@@ -270,10 +285,15 @@ def _first_non_negative(months: list[Month]) -> int:
 
 @dataclass(slots=True)
 class Group:
-    """元/会/运/世层级的一个分组，由固定的朔望月数切分。"""
+    """元/会/运/世层级的一个分组。
+
+    切分的单位由调用方决定：`group_months()` 按朔望月切，`group_years()` 按朔望年切。
+    无论按哪个单位，`first` / `last` 都记**全局月序**，因为各表的 `start` / `end`
+    最终要落到月首 / 月末这两个时间点上。
+    """
 
     order: int          # 全局序号，从 1 起（按时间先后）
-    identity: int       # 首个月首的绝对时间
+    identity: int       # 分组的起始瞬间（首个月首的绝对时间）
     first: int          # 首个朔望月的全局月序
     last: int           # 末个朔望月的全局月序
     months: int         # 含有的朔望月数
@@ -282,18 +302,18 @@ class Group:
 
 
 def group_months(workbook: Workbook, size: int, parent_size: int | None = None) -> Iterator[Group]:
-    """按 `size` 个月一组切分全部朔望月，得到层级实体。
+    """按 `size` 个朔望月一组切分全部朔望月，得到层级实体。
 
     `order`    = `floor((全局月序 - 1) / size) + 1`，全局一致（建元当月所在组为 1）
     `parent`   = `floor((order - 1) / parent_size) + 1`（`parent_size` 为 None 时等于 `order`）
     `relative` = 在父级内的序号，从 1 起
     """
-    groups: dict[int, list[int]] = {}
+    buckets: dict[int, list[int]] = {}
     for position in range(len(workbook.months)):
         order = (workbook.month_index(position) - 1) // size + 1
-        groups.setdefault(order, []).append(position)
-    for order in sorted(groups):
-        positions = groups[order]
+        buckets.setdefault(order, []).append(position)
+    for order in sorted(buckets):
+        positions = buckets[order]
         parent = order if parent_size is None else (order - 1) // parent_size + 1
         relative = order if parent_size is None else (order - 1) % parent_size + 1
         yield Group(
@@ -305,3 +325,69 @@ def group_months(workbook: Workbook, size: int, parent_size: int | None = None) 
             parent=parent,
             relative=relative,
         )
+
+
+def group_years(workbook: Workbook, size: int, parent_size: int | None = None) -> Iterator[Group]:
+    """按 `size` 个**朔望年**（源表的一个纪年块）一组切分，得到层级实体。
+
+    这是 `src/entity/*.ts` 的口径：`1 世 = 30 朔望年`、`1 运 = 12 世 = 360 朔望年`、
+    `1 会 = 30 运 = 10800 朔望年`、`1 元 = 12 会 = 129600 朔望年`。
+
+    与 `group_months()` 的区别只在切分单位：朔望年含 12 或 13 个朔望月，长度不固定，
+    因此组的月数不恒定；`first` / `last` 仍记全局月序，`start` / `end` 才能落在月首 / 月末。
+
+    `order` = `floor((全局年号 - 1) / size) + 1`，全局年号见 `YEAR_INDEX_OFFSET`，
+    故建元所在的组恒为 1。
+    """
+    blocks: dict[int, list[int]] = {}
+    for position, month in enumerate(workbook.months):
+        blocks.setdefault(month.year_label, []).append(position)
+
+    buckets: dict[int, list[int]] = {}
+    for label in sorted(blocks):
+        order = (label + YEAR_INDEX_OFFSET - 1) // size + 1
+        buckets.setdefault(order, []).extend(blocks[label])
+
+    for order in sorted(buckets):
+        positions = buckets[order]
+        parent = order if parent_size is None else (order - 1) // parent_size + 1
+        relative = order if parent_size is None else (order - 1) % parent_size + 1
+        yield Group(
+            order=order,
+            identity=workbook.months[positions[0]].absolute,
+            first=workbook.month_index(positions[0]),
+            last=workbook.month_index(positions[-1]),
+            months=len(positions),
+            parent=parent,
+            relative=relative,
+        )
+
+
+def year_index(workbook: Workbook, year_label: int) -> int:
+    """纪年块标签 -> 全局朔望年号（建元所在的朔望年为 1）。"""
+    return year_label + YEAR_INDEX_OFFSET
+
+
+def year_index_of(workbook: Workbook, absolute: int) -> int:
+    """瞬间 -> 包含它的朔望年的全局年号。"""
+    starts, labels = _year_axis(workbook)
+    position = bisect.bisect_right(starts, absolute) - 1
+    position = max(0, min(position, len(labels) - 1))
+    return labels[position] + YEAR_INDEX_OFFSET
+
+
+#: workbook 标识 -> (每个纪年块的首个月首, 纪年块标签)，均按时间升序
+_YEAR_AXIS: dict[int, tuple[list[int], list[int]]] = {}
+
+
+def _year_axis(workbook: Workbook) -> tuple[list[int], list[int]]:
+    cached = _YEAR_AXIS.get(id(workbook))
+    if cached is not None:
+        return cached
+    first: dict[int, int] = {}
+    for position, month in enumerate(workbook.months):
+        first.setdefault(month.year_label, position)
+    labels = sorted(first)
+    cached = ([workbook.months[first[label]].absolute for label in labels], labels)
+    _YEAR_AXIS[id(workbook)] = cached
+    return cached

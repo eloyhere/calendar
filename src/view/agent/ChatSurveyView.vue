@@ -44,7 +44,7 @@ const Databases = [
     { name: "part", label: "分段", rows: 871962 },
     { name: "phenology", label: "节气物候", rows: 564000 },
     { name: "synodic", label: "朔望", rows: 314154 },
-    { name: "epoch", label: "建元", rows: 9689 },
+    { name: "epoch", label: "建元", rows: 784 },
     { name: "event", label: "事件", rows: 2379 },
     { name: "era", label: "年号", rows: 1184 },
     { name: "perform", label: "行度", rows: 808 },
@@ -146,8 +146,8 @@ function formatRows(rows: number): string {
 
             <p class="xy-note">{{ samplingNote }}</p>
             <p class="xy-note">
-                口径目前**只是界面上的选择，没有接到查询**：真正的取数要等
-                `src/store/*.store.ts` 的 `load()` 与 `count()` 接上。
+                口径目前**只是界面上的选择，没有接到查询**：真正的取数要等 `src/store/*.store.ts` 的
+                `load()` 与 `count()` 接上。
             </p>
         </section>
     </ChatPage>

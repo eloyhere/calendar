@@ -174,12 +174,14 @@ export type CitationStance = "support" | "contradict" | "reference";
 export type CitationConfidence = "high" | "medium" | "low";
 
 /** 立场的界面文案与配色（`ElTag` 的 `type`）。 */
-export const StanceLabels: Record<CitationStance, { text: string; type: "success" | "danger" | "info" }> =
-    {
-        support: { text: "支持", type: "success" },
-        contradict: { text: "反证", type: "danger" },
-        reference: { text: "口径", type: "info" }
-    };
+export const StanceLabels: Record<
+    CitationStance,
+    { text: string; type: "success" | "danger" | "info" }
+> = {
+    support: { text: "支持", type: "success" },
+    contradict: { text: "反证", type: "danger" },
+    reference: { text: "口径", type: "info" }
+};
 
 /** 置信度的界面文案与说明。 */
 export const ConfidenceLabels: Record<CitationConfidence, { text: string; note: string }> = {
@@ -318,9 +320,10 @@ export function stageOf(messages: readonly ChatMessage[]): ResearchStageState[] 
         done.report = false;
     }
 
-    return ResearchStages.map(
-        (stage: ResearchStage): ResearchStageState => ({ stage, done: done[stage.id] })
-    );
+    return ResearchStages.map((stage: ResearchStage): ResearchStageState => ({
+        stage,
+        done: done[stage.id]
+    }));
 }
 
 /** 已完成的环节数。 */

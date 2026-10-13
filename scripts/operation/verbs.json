@@ -1,0 +1,1781 @@
+{
+    "generatedBy": "scripts/operation/build.mjs",
+    "source": "scripts/operation/powershell5.1",
+    "verbCount": 82,
+    "knownFlags": [
+        "absent",
+        "allow",
+        "background",
+        "backup",
+        "clearmodifiers",
+        "exact",
+        "force",
+        "hold",
+        "json",
+        "no-numbers",
+        "no-recursive",
+        "parents",
+        "permanent",
+        "pretty",
+        "quiet",
+        "recursive",
+        "regex",
+        "shell",
+        "with-numbers",
+        "z-order"
+    ],
+    "verbs": [
+        {
+            "key": "clipboard.read",
+            "module": "clipboard",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": false,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-ClipboardRead"
+        },
+        {
+            "key": "clipboard.write",
+            "module": "clipboard",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-ClipboardWrite"
+        },
+        {
+            "key": "environment.add",
+            "module": "environment",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "value",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAdd"
+        },
+        {
+            "key": "environment.attribute.add",
+            "module": "environment",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "value",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAttributeAdd"
+        },
+        {
+            "key": "environment.attribute.delete",
+            "module": "environment",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "index",
+                    "value"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAttributeDelete"
+        },
+        {
+            "key": "environment.attribute.get",
+            "module": "environment",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAttributeGet"
+        },
+        {
+            "key": "environment.attribute.list",
+            "module": "environment",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAttributeList"
+        },
+        {
+            "key": "environment.attribute.set",
+            "module": "environment",
+            "arity": 3,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "index",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "value",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentAttributeSet"
+        },
+        {
+            "key": "environment.delete",
+            "module": "environment",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentDelete"
+        },
+        {
+            "key": "environment.get",
+            "module": "environment",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentGet"
+        },
+        {
+            "key": "environment.list",
+            "module": "environment",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "filter"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentList"
+        },
+        {
+            "key": "environment.set",
+            "module": "environment",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "value",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-EnvironmentSet"
+        },
+        {
+            "key": "execute.asynchronous",
+            "module": "execute",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "workdir",
+                    "timeout",
+                    "encoding"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-ExecuteBatch"
+        },
+        {
+            "key": "execute.command",
+            "module": "execute",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "workdir",
+                    "timeout",
+                    "stdin"
+                ],
+                "booleans": [
+                    "shell",
+                    "background"
+                ]
+            },
+            "implementation": "Invoke-ExecuteCommand"
+        },
+        {
+            "key": "execute.kill",
+            "module": "execute",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "pid",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "force"
+                ]
+            },
+            "implementation": "Invoke-ExecuteKill"
+        },
+        {
+            "key": "execute.query",
+            "module": "execute",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "pid",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-ExecuteQuery"
+        },
+        {
+            "key": "execute.synchronous",
+            "module": "execute",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "workdir",
+                    "timeout",
+                    "encoding"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-ExecuteBatch"
+        },
+        {
+            "key": "file.append",
+            "module": "file",
+            "arity": 3,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "content",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": false,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileAppend"
+        },
+        {
+            "key": "file.charset",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileCharset"
+        },
+        {
+            "key": "file.copy",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "source",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "destination",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileCopy"
+        },
+        {
+            "key": "file.create",
+            "module": "file",
+            "arity": 3,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "content",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": true,
+                    "fallback": "utf-8"
+                }
+            ],
+            "flags": {
+                "values": [
+                    "eol"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileCreate"
+        },
+        {
+            "key": "file.delete",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "permanent"
+                ]
+            },
+            "implementation": "Invoke-FileDelete"
+        },
+        {
+            "key": "file.encode",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "bom"
+                ],
+                "booleans": [
+                    "backup"
+                ]
+            },
+            "implementation": "Invoke-FileEncode"
+        },
+        {
+            "key": "file.information",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileInformation"
+        },
+        {
+            "key": "file.insert",
+            "module": "file",
+            "arity": 3,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "content",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "offset",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "charset"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileInsert"
+        },
+        {
+            "key": "file.length",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "no-recursive"
+                ]
+            },
+            "implementation": "Invoke-FileLength"
+        },
+        {
+            "key": "file.list",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileList"
+        },
+        {
+            "key": "file.mkdir",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "parents"
+                ]
+            },
+            "implementation": "Invoke-FileMkdir"
+        },
+        {
+            "key": "file.move",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "source",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "destination",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileMove"
+        },
+        {
+            "key": "file.search",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "directory",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "max-depth",
+                    "limit",
+                    "max-bytes",
+                    "type"
+                ],
+                "booleans": [
+                    "regex",
+                    "recursive"
+                ]
+            },
+            "implementation": "Invoke-FileSearch"
+        },
+        {
+            "key": "file.verify.charset",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileVerifyCharset"
+        },
+        {
+            "key": "file.verify.completion",
+            "module": "file",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "length",
+                    "sha256",
+                    "bom",
+                    "eol"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileVerifyCompletion"
+        },
+        {
+            "key": "file.verify.encoding",
+            "module": "file",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-FileVerifyEncoding"
+        },
+        {
+            "key": "file.view",
+            "module": "file",
+            "arity": 4,
+            "minPositionals": 4,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "path",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "charset",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "start",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "end",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "max-bytes"
+                ],
+                "booleans": [
+                    "with-numbers"
+                ]
+            },
+            "implementation": "Invoke-FileView"
+        },
+        {
+            "key": "keyboard.codes",
+            "module": "keyboard",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-KeyboardCodes"
+        },
+        {
+            "key": "keyboard.combination",
+            "module": "keyboard",
+            "arity": null,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "phase",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "clearmodifiers"
+                ]
+            },
+            "implementation": "Invoke-KeyboardCombination"
+        },
+        {
+            "key": "keyboard.down",
+            "module": "keyboard",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "clearmodifiers"
+                ]
+            },
+            "implementation": "Invoke-KeyboardDown"
+        },
+        {
+            "key": "keyboard.press",
+            "module": "keyboard",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "clearmodifiers"
+                ]
+            },
+            "implementation": "Invoke-KeyboardPress"
+        },
+        {
+            "key": "keyboard.type",
+            "module": "keyboard",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "interval"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-KeyboardType"
+        },
+        {
+            "key": "keyboard.up",
+            "module": "keyboard",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-KeyboardUp"
+        },
+        {
+            "key": "mouse.click",
+            "module": "mouse",
+            "arity": null,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "button",
+                    "count"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseClick"
+        },
+        {
+            "key": "mouse.context",
+            "module": "mouse",
+            "arity": null,
+            "minPositionals": null,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseContext"
+        },
+        {
+            "key": "mouse.cursor",
+            "module": "mouse",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseCursor"
+        },
+        {
+            "key": "mouse.down",
+            "module": "mouse",
+            "arity": null,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "button"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseDown"
+        },
+        {
+            "key": "mouse.over",
+            "module": "mouse",
+            "arity": null,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseOver"
+        },
+        {
+            "key": "mouse.up",
+            "module": "mouse",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "button"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseUp"
+        },
+        {
+            "key": "mouse.wheel",
+            "module": "mouse",
+            "arity": null,
+            "minPositionals": 2,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-MouseWheel"
+        },
+        {
+            "key": "permission.acl.init",
+            "module": "permission",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionAclInit"
+        },
+        {
+            "key": "permission.audit",
+            "module": "permission",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "limit"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionAudit"
+        },
+        {
+            "key": "permission.grant",
+            "module": "permission",
+            "arity": null,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionGrant"
+        },
+        {
+            "key": "permission.list",
+            "module": "permission",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionList"
+        },
+        {
+            "key": "permission.query",
+            "module": "permission",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "verb",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "target",
+                    "required": true,
+                    "fallback": "*"
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionQuery"
+        },
+        {
+            "key": "permission.revoke",
+            "module": "permission",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-PermissionRevoke"
+        },
+        {
+            "key": "screenshot",
+            "module": "screenshot",
+            "arity": null,
+            "minPositionals": null,
+            "mutating": false,
+            "sh": false,
+            "names": [],
+            "flags": {
+                "values": [
+                    "out",
+                    "format"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-Screenshot"
+        },
+        {
+            "key": "selfcheck",
+            "module": "selfcheck",
+            "arity": null,
+            "minPositionals": null,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-Selfcheck"
+        },
+        {
+            "key": "service.list",
+            "module": "service",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": false,
+            "names": [],
+            "flags": {
+                "values": [
+                    "filter"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-ServiceList"
+        },
+        {
+            "key": "service.query",
+            "module": "service",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": false,
+            "names": [
+                {
+                    "name": "name",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-ServiceQuery"
+        },
+        {
+            "key": "structure",
+            "module": "structure",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": false,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "depth"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-StructureAtPoint"
+        },
+        {
+            "key": "system.brand",
+            "module": "system",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-SystemBrand"
+        },
+        {
+            "key": "system.cpu",
+            "module": "system",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-SystemCpu"
+        },
+        {
+            "key": "system.gpu",
+            "module": "system",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-SystemGpu"
+        },
+        {
+            "key": "system.info",
+            "module": "system",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-SystemInfo"
+        },
+        {
+            "key": "system.version",
+            "module": "system",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-SystemVersion"
+        },
+        {
+            "key": "task.kill",
+            "module": "task",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": true,
+            "names": [
+                {
+                    "name": "pid",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "force"
+                ]
+            },
+            "implementation": "Invoke-TaskKill"
+        },
+        {
+            "key": "task.launch",
+            "module": "task",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "workdir"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-TaskLaunch"
+        },
+        {
+            "key": "task.list",
+            "module": "task",
+            "arity": 0,
+            "minPositionals": 0,
+            "mutating": false,
+            "sh": true,
+            "names": [],
+            "flags": {
+                "values": [
+                    "filter",
+                    "limit"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-TaskList"
+        },
+        {
+            "key": "task.query",
+            "module": "task",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "pid",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-TaskQuery"
+        },
+        {
+            "key": "task.show",
+            "module": "task",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "pid",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-TaskShow"
+        },
+        {
+            "key": "text",
+            "module": "text",
+            "arity": 2,
+            "minPositionals": 2,
+            "mutating": false,
+            "sh": false,
+            "names": [
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "max-chars"
+                ],
+                "booleans": []
+            },
+            "implementation": "Invoke-TextAtPoint"
+        },
+        {
+            "key": "wait.ms",
+            "module": "wait",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": true,
+            "names": [
+                {
+                    "name": "ms",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-WaitMs"
+        },
+        {
+            "key": "wait.window",
+            "module": "wait",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": false,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "timeout",
+                    "interval"
+                ],
+                "booleans": [
+                    "exact",
+                    "absent"
+                ]
+            },
+            "implementation": "Invoke-WaitWindow"
+        },
+        {
+            "key": "window.active",
+            "module": "window",
+            "arity": null,
+            "minPositionals": null,
+            "mutating": false,
+            "sh": false,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-WindowActive"
+        },
+        {
+            "key": "window.bottom",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowBottom"
+        },
+        {
+            "key": "window.close",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowClose"
+        },
+        {
+            "key": "window.find",
+            "module": "window",
+            "arity": 1,
+            "minPositionals": 1,
+            "mutating": false,
+            "sh": false,
+            "names": [
+                {
+                    "name": "arg1",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [
+                    "pid"
+                ],
+                "booleans": [
+                    "exact",
+                    "regex"
+                ]
+            },
+            "implementation": "Invoke-WindowFind"
+        },
+        {
+            "key": "window.list",
+            "module": "window",
+            "arity": null,
+            "minPositionals": null,
+            "mutating": false,
+            "sh": false,
+            "names": [],
+            "flags": {
+                "values": [],
+                "booleans": []
+            },
+            "implementation": "Invoke-WindowList"
+        },
+        {
+            "key": "window.maximize",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowMaximize"
+        },
+        {
+            "key": "window.minimize",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowMinimize"
+        },
+        {
+            "key": "window.move",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "x",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "y",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowMove"
+        },
+        {
+            "key": "window.resize",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 3,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "width",
+                    "required": true,
+                    "fallback": null
+                },
+                {
+                    "name": "height",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowResize"
+        },
+        {
+            "key": "window.restore",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowRestore"
+        },
+        {
+            "key": "window.top",
+            "module": "window",
+            "arity": null,
+            "minPositionals": 1,
+            "mutating": true,
+            "sh": false,
+            "names": [
+                {
+                    "name": "exact",
+                    "required": true,
+                    "fallback": null
+                }
+            ],
+            "flags": {
+                "values": [],
+                "booleans": [
+                    "exact"
+                ]
+            },
+            "implementation": "Invoke-WindowTop"
+        }
+    ]
+}

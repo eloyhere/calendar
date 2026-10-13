@@ -12,7 +12,7 @@
  *
  * - **空会话**（会话存在但没有发言）：显示助手问候 + `starters` 选题。这是最常见
  *   的入口，用户需要"第一句说什么"的提示，一个 `ElEmpty` 会把人晾在那里；
- * - **没有会话**：显示 `EmptyState` 说明为什么空。当前只有"历史对话"清空后
+ * - **没有会话**：显示 `EmptyState` 说明为什么空。把某个模式的会话全删掉之后
  *   会走到这里。
  *
  * ## 自动滚到底的时机
@@ -27,13 +27,20 @@ import type { ScrollbarInstance } from "element-plus";
 
 import EmptyState from "../../../component/state/EmptyState.vue";
 import { resolveIconComponent } from "../../../plugin/dependencies";
-import type { ChatPageApi } from "../../../state/use-chat-page";
+import type { ChatSessionApi } from "../../../state/use-chat-session";
 import ChatMessageBubble from "./ChatMessageBubble.vue";
 import ChatTyping from "./ChatTyping.vue";
 
 interface Props {
-    /** `useChatPage()` 的返回值，页面已经装配好的那一份 */
-    chat: ChatPageApi;
+    /**
+     * 会话状态。
+     *
+     * 类型取 `ChatSessionApi` 而不是 `ChatPageApi`：本组件只用消息流与"在等回复"
+     * 这几样，而那几样**对话页与助手抽屉都有**（`state/use-chat-session.ts` 的分层）。
+     * 收窄到 `ChatSessionApi` 之后，抽屉可以直接把它传进来，不必造一个假的
+     * `ChatPageApi`——那种假对象正是"两个入口各写一套渲染"的开端。
+     */
+    chat: ChatSessionApi;
 }
 
 const props = defineProps<Props>();
@@ -90,7 +97,7 @@ watch(
                         <ElButton
                             class="chat-stream__starter"
                             plain
-                            @click="props.chat.sendStarter(starter)">
+                            @click="props.chat.submit(starter)">
                             {{ starter }}
                         </ElButton>
                     </li>
@@ -98,7 +105,8 @@ watch(
 
                 <p class="xy-note chat-stream__welcome-foot">
                     消息流、工具调用与引用来源都还没接后端；接入点见
-                    <code>src/state/use-chat-page.ts</code> 的说明。上面三条可直接点，会走一遍完整的发送与回复。
+                    <code>src/state/use-chat-page.ts</code>
+                    的说明。上面三条可直接点，会走一遍完整的发送与回复。
                 </p>
             </div>
 

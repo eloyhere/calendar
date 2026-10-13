@@ -1,7 +1,7 @@
 """tropical.calendar：回归年。
 
-回归年（年 + 月）：以太阳黄经回到同一值为年界，年长约 365.2422 日，月为回归年 12 等分；
-本轮只建表、不写行。
+回归年（年 + 月）：以建元为锚，年长取 RULE 给的 365.2422 日，月为回归年 12 等分；
+换算法则见 `database/calendars.py` 的 `tropical.calendar` 一项。
 
     python scripts/database/tropical_calendar.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 

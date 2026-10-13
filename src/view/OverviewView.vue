@@ -27,28 +27,28 @@ interface DatabaseRow {
 }
 
 const Databases: DatabaseRow[] = [
-    { name: "temporal", label: "时间点", tables: "temporal", rows: 6943509, note: "全库时间主键" },
+    { name: "temporal", label: "时间点", tables: "temporal", rows: 10734114, note: "全库时间主键" },
     { name: "phenology", label: "节气物候", tables: "phenology", rows: 564000, note: "节气 / 中气时刻" },
     { name: "phase", label: "月相", tables: "phase", rows: 1162616, note: "朔 / 上弦 / 望 / 下弦" },
     { name: "part", label: "分段", tables: "part", rows: 871962, note: "元会运世的分段" },
     { name: "week", label: "周", tables: "week", rows: 1453271, note: "旬与候" },
     { name: "synodic", label: "朔望", tables: "calendar_year、month", rows: 314154, note: "来自 calendar.xlsx" },
-    { name: "primary", label: "本原", tables: "primary", rows: 3, note: "元 / 会 / 运 三级" },
-    { name: "encounter", label: "交会", tables: "encounter", rows: 28, note: "日月交会" },
-    { name: "perform", label: "行度", tables: "perform", rows: 808, note: "五星行度" },
-    { name: "epoch", label: "建元", tables: "epoch", rows: 9689, note: "历代建元" },
+    { name: "primary", label: "本原", tables: "primary", rows: 2, note: "元 / 会 / 运 三级" },
+    { name: "encounter", label: "交会", tables: "encounter", rows: 3, note: "日月交会" },
+    { name: "perform", label: "行度", tables: "perform", rows: 66, note: "五星行度" },
+    { name: "epoch", label: "建元", tables: "epoch", rows: 784, note: "30 朔望年一世" },
     { name: "dynasty", label: "朝代", tables: "dynasty", rows: 89, note: "含神话与上古" },
     { name: "era", label: "年号", tables: "era", rows: 1184, note: "允许重叠" },
     { name: "person", label: "人物", tables: "person", rows: 425, note: "君主与作者" },
     { name: "event", label: "事件", tables: "event", rows: 2379, note: "取自历史资料" },
-    { name: "chronology", label: "年表", tables: "chronology", rows: 0, note: "数据源缺失" },
-    { name: "astronomy", label: "天文历", tables: "year、month", rows: 0, note: "换算法则待实现" },
-    { name: "climate", label: "节气历", tables: "climate、year、month", rows: 1743926, note: "节气归属" },
-    { name: "gregory", label: "格里高丽历", tables: "year、month", rows: 0, note: "待生成" },
-    { name: "jupiter", label: "木星历", tables: "year、month", rows: 0, note: "待生成" },
-    { name: "natural", label: "轩辕历", tables: "year、month", rows: 0, note: "待生成" },
-    { name: "tree", label: "干支历", tables: "year、month", rows: 0, note: "待生成" },
-    { name: "tropical", label: "回归历", tables: "year、month", rows: 0, note: "待生成" }
+    { name: "chronology", label: "年表", tables: "chronology", rows: 23500, note: "一个朔望年一条" },
+    { name: "astronomy", label: "天文历", tables: "year、month", rows: 314154, note: "年由合朔与回归年长定界" },
+    { name: "climate", label: "节气历", tables: "climate、year、month", rows: 2331375, note: "节气归属" },
+    { name: "gregory", label: "格里高丽历", tables: "year、month", rows: 305499, note: "proleptic" },
+    { name: "jupiter", label: "木星历", tables: "year、month", rows: 25756, note: "岁星周期 11.862 年" },
+    { name: "natural", label: "轩辕历", tables: "year、month", rows: 314154, note: "建元为 1 年 1 月 1 日" },
+    { name: "tree", label: "干支历", tables: "year、month", rows: 304722, note: "以立春为年界" },
+    { name: "tropical", label: "回归历", tables: "year、month", rows: 305498, note: "回归年 365.2422 日" }
 ];
 
 /** 行数格式化：`6943509` -> `6,943,509`。 */

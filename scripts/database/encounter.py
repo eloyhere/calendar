@@ -1,6 +1,6 @@
 """encounter：会。
 
-会：1 会 = 30 运 = 360 世 = 10800 朔望月，12 会 = 1 元；`primary` 列取元表的 identity。
+会：1 会 = 30 运 = 360 世 = 10800 朔望年，12 会 = 1 元；`primary` 列取元表的 identity。
 
     python scripts/database/encounter.py [calendar.xlsx] [--out src/sqlite] [--no-vacuum]
 
